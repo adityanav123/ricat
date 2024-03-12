@@ -6,7 +6,7 @@ authors = ["Aditya Navphule <adityanav@duck.com>"]
 description = "A Rust-Based implemenation of classic UNIX `cat` command"
 repository = "https://github.com/adityanav123/ricat"
 license = "MIT"
-keywords = ["cat", "unix", "text-processing", "cli", "rust", "file", "console", "utilities", "terminal", "system-tools"]
+keywords = ["cat", "cli", "text-processing", "file", "system-tools"]
 
 [[bin]]
 name = "ricat"
