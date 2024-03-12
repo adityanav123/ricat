@@ -2,6 +2,18 @@
 
 This project is a Rust-based reimagining of the classic Unix `cat` command, drawing inspiration from its original implementation in GNU Core Utilities. It demonstrates the power and flexibility of Rust for system utilities development.
 
+
+## Installation
+
+Ensure you have Rust and Cargo installed on your system. If you don't have Rust installed, you can install it from [the official site](https://www.rust-lang.org/tools/install).
+
+You can install `kalkulator` directly from crates.io by running:
+
+```bash
+cargo install kalkulator
+```
+This command installs the `kalkulator` binary, making it available for use in your terminal
+
 ## Features
 
 - **Modular Design**: Easily extended with new line-based text processing features.
