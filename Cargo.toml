@@ -1,0 +1,16 @@
+[package]
+name = "ricat"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aditya Navphule <adityanav@duck.com>"]
+description = "A Rust-Based implemenation of classic UNIX `cat` command"
+repository = "https://github.com/adityanav123/ricat"
+license = "MIT"
+keywords = ["cat", "unix", "text-processing", "cli", "rust", "file", "console", "utilities", "terminal", "system-tools"]
+
+[[bin]]
+name = "ricat"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.2", features = ["derive"]}
