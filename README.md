@@ -33,9 +33,25 @@ ricat -f my_file.txt
 ricat -f my_file.txt -n
 ```
 
+### Read a File after appending `$` sign at the end of each Line
+
+```bash
+ricat -f my_file.txt -h
+```
+
+### Read from the Standard Input by User
+* This behavior allows `ricat` to be used in a pipeline of commands, where it can receive input from a previous command and pass its output to the next command. Without any arguments, `ricat` effectively acts as a simple text editor that displays what you type in real-time, making it useful for creating short text files directly from the command line by redirecting the output to a file using the > operator.
+
+```bash
+ricat
+```
+
 ## Extending ricat
 
 Adding new features to `ricat` is straightforward. Implement the `LineTextFeature` trait for any struct to create a new feature. For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
+
+## TBD
+- Remove the need of `-f` flag for reading the filename input
 
 ## Contributing
 
