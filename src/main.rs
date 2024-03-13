@@ -22,6 +22,11 @@
 //! ```bash
 //! ricat -f my_file.txt -n
 //! ```
+//! 
+//! ### Read a file with appending `$` at end of each line
+//! ```bash
+//! ricat -f my_file.txt -h
+//! ```
 //!
 //! ## Extending ricat
 //!
@@ -63,10 +68,26 @@ impl LineTextFeature for LineNumbering {
     }
 }
 
+/// Feature: adding `$` at the last of the line
+struct HashSymbolAtLast;
+
+impl HashSymbolAtLast {
+    fn new() -> Self {
+        Self
+    }
+}
+
+impl LineTextFeature for HashSymbolAtLast {
+    fn apply_feature(&mut self, line: &str) -> String {
+        let result = format!("{}$", line);
+        result
+    }
+}
+
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.1.2",
+    version = "0.1.3",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -74,6 +95,9 @@ struct Cli {
     /// Enables line numbering for each line of the input.
     #[arg(short, long, action = clap::ArgAction::SetTrue, help = "shows line numbers for each line")]
     numbers: bool,
+
+    #[arg(short, long, action = clap::ArgAction::SetTrue, help = "adds `$` to the last of each line")]
+    hash: bool,
 
     /// Optional file path to read from instead of standard input.
     #[arg(short, long, help = "File you want to read")]
@@ -85,7 +109,7 @@ fn main() {
     let mut features: Vec<Box<dyn LineTextFeature>> = Vec::new(); // any implemented feature
 
     // Determine the input source based on command line arguments
-    let input: Box<dyn Read> = match arguments.file {
+    let input: Box<dyn Read> = match &arguments.file {
         Some(file) => Box::new(BufReader::new(File::open(file).unwrap_or_else(|error| {
             eprintln!("failed to open file!: {}", error);
             exit(1);
@@ -93,19 +117,29 @@ fn main() {
         None => Box::new(stdin()), // Default: read from standard input
     };
 
-    // Apply line numbering feature if the -n flag is passed
-    if arguments.numbers {
-        features.push(Box::new(LineNumbering::new()));
+    add_features_from_args(&arguments, &mut features);
+
+    if !features.is_empty() {
         process_input_with_features(input, stdout(), &mut features).unwrap_or_else(|error| {
             eprintln!("Error processing input : {}", error);
             exit(1);
         });
     } else {
-        // default behavior: simply copy input to output
         copy(input, stdout()).unwrap_or_else(|error| {
             eprintln!("Error processing input: {}", error);
             exit(1);
         });
+    }
+}
+
+/// Will Add Features based on arguments passed
+fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFeature>>) {
+    if arguments.numbers {
+        features.push(Box::new(LineNumbering::new()));
+    }
+
+    if arguments.hash {
+        features.push(Box::new(HashSymbolAtLast::new()));
     }
 }
 
