@@ -24,19 +24,19 @@ This command installs the `ricat` binary, making it available for use in your te
 ### Read a File Without Line Numbering
 
 ```bash
-ricat -f my_file.txt
+ricat my_file.txt
 ```
 
 ### Read a File With Line Numbering Enabled
 
 ```bash
-ricat -f my_file.txt -n
+ricat my_file.txt -n
 ```
 
 ### Read a File after appending `$` sign at the end of each Line
 
 ```bash
-ricat -f my_file.txt -h
+ricat -h my_file.txt
 ```
 
 ### Read from the Standard Input by User
@@ -51,7 +51,9 @@ ricat
 Adding new features to `ricat` is straightforward. Implement the `LineTextFeature` trait for any struct to create a new feature. For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
 
 ## TBD
-- Remove the need of `-f` flag for reading the filename input
+[x] Remove the need of `-f` flag for reading the filename input
+[ ] Stand-in replacement for cat (if possible).
+[ ] return all the lines with a given pattern/word.
 
 ## Contributing
 

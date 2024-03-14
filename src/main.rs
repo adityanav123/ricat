@@ -15,17 +15,17 @@
 //!
 //! ### Read a File Without Line Numbering
 //! ```bash
-//! ricat -f my_file.txt
+//! ricat my_file.txt
 //! ```
 //!
 //! ### Read a File With Line Numbering Enabled
 //! ```bash
-//! ricat -f my_file.txt -n
+//! ricat -n my_file.txt
 //! ```
-//! 
+//!
 //! ### Read a file with appending `$` at end of each line
 //! ```bash
-//! ricat -f my_file.txt -h
+//! ricat -d my_file.txt
 //! ```
 //!
 //! ## Extending ricat
@@ -43,11 +43,10 @@ use std::{
 
 /// Trait defining a text feature that can be applied to lines of input.
 trait LineTextFeature {
-    /// Applies a specific feature to a line of text and returns the modified line.
-    fn apply_feature(&mut self, line: &str) -> String;
+    /// Applies a specific feature to a line of text and returns the modified line or None to omit the line.
+    fn apply_feature(&mut self, line: &str) -> Option<String>;
 }
 
-// Line Numbering Feature
 /// Feature: adding line numbers to each line of text.
 struct LineNumbering {
     current_line: usize,
@@ -60,47 +59,94 @@ impl LineNumbering {
     }
 }
 impl LineTextFeature for LineNumbering {
-    /// Applies line numbering to the given line, prefixing it with the current line number.
-    fn apply_feature(&mut self, line: &str) -> String {
-        let result = format!("{:} {}", self.current_line, line);
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        let result = Some(format!("{:} {}", self.current_line, line));
         self.current_line += 1;
         result
     }
 }
 
 /// Feature: adding `$` at the last of the line
-struct HashSymbolAtLast;
+struct DollarSymbolAtLast;
 
-impl HashSymbolAtLast {
+impl DollarSymbolAtLast {
     fn new() -> Self {
         Self
     }
 }
 
-impl LineTextFeature for HashSymbolAtLast {
-    fn apply_feature(&mut self, line: &str) -> String {
-        let result = format!("{}$", line);
-        result
+impl LineTextFeature for DollarSymbolAtLast {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        Some(format!("{}$", line))
+    }
+}
+
+/// Feature: adding `^I` in place of all the tab-spaces used in the text.
+struct ReplaceTabspaces;
+impl ReplaceTabspaces {
+    fn new() -> Self {
+        Self
+    }
+}
+
+impl LineTextFeature for ReplaceTabspaces {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        Some(line.replace("\t", "^I"))
+    }
+}
+
+/// Feature: Compresses multiple consecutive empty lines into a single empty line
+struct CompressEmptyLines {
+    was_last_line_empty: bool,
+}
+
+impl CompressEmptyLines {
+    fn new() -> Self {
+        Self {
+            was_last_line_empty: false,
+        }
+    }
+}
+
+impl LineTextFeature for CompressEmptyLines {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        if line.trim().is_empty() {
+            if self.was_last_line_empty {
+                None
+            } else {
+                self.was_last_line_empty = true;
+                Some(String::new()) // Return an empty string to indicate a single empty line should be printed.
+            }
+        } else {
+            self.was_last_line_empty = false;
+            Some(line.to_string())
+        }
     }
 }
 
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.1.3",
+    version = "0.2.0",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
 struct Cli {
     /// Enables line numbering for each line of the input.
-    #[arg(short, long, action = clap::ArgAction::SetTrue, help = "shows line numbers for each line")]
+    #[clap(short = 'n', long, action = clap::ArgAction::SetTrue, help = "shows line numbers for each line")]
     numbers: bool,
 
-    #[arg(short, long, action = clap::ArgAction::SetTrue, help = "adds `$` to the last of each line")]
-    hash: bool,
+    #[clap(short = 'd', long, action = clap::ArgAction::SetTrue, help = "adds `$` to the last of each line")]
+    dollar: bool,
+
+    #[clap(short = 't', long, action = clap::ArgAction::SetTrue, help = "replaces the tab spaces in the text with ^I")]
+    tabs: bool,
+
+    #[clap(short = 's', long, action = clap::ArgAction::SetTrue, help = "suppress repeated empty output lines")]
+    squeeze_blank: bool,
 
     /// Optional file path to read from instead of standard input.
-    #[arg(short, long, help = "File you want to read")]
+    #[clap(help = "File you want to read")]
     file: Option<String>,
 }
 
@@ -134,12 +180,20 @@ fn main() {
 
 /// Will Add Features based on arguments passed
 fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFeature>>) {
+    if arguments.squeeze_blank {
+        features.push(Box::new(CompressEmptyLines::new()));
+    }
+
     if arguments.numbers {
         features.push(Box::new(LineNumbering::new()));
     }
 
-    if arguments.hash {
-        features.push(Box::new(HashSymbolAtLast::new()));
+    if arguments.dollar {
+        features.push(Box::new(DollarSymbolAtLast::new()));
+    }
+
+    if arguments.tabs {
+        features.push(Box::new(ReplaceTabspaces::new()));
     }
 }
 
@@ -165,14 +219,23 @@ fn process_input_with_features<R: Read, W: Write>(
     features: &mut [Box<dyn LineTextFeature>],
 ) -> Result<(), Error> {
     let buf_reader = BufReader::new(reader);
-    for line in buf_reader.lines() {
-        let mut line = line?;
-        for feature in &mut *features {
-            // Apply each feature to the line
-            line = feature.apply_feature(&line);
+    for line_result in buf_reader.lines() {
+        let line = line_result?;
+        let mut processed_line = Some(line);
+
+        for feature in features.iter_mut() {
+            if let Some(current_line) = processed_line {
+                // Apply each feature to the line if it's not None
+                processed_line = feature.apply_feature(&current_line);
+            } else {
+                // If a feature returned None, stop processing this line and skip to the next one
+                break;
+            }
         }
-        // Write the modified line to output
-        writeln!(writer, "{}", line)?;
+
+        if let Some(current_line) = processed_line {
+            writeln!(writer, "{}", current_line)?;
+        }
     }
     Ok(())
 }
