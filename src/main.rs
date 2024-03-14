@@ -60,7 +60,9 @@ impl LineNumbering {
 }
 impl LineTextFeature for LineNumbering {
     fn apply_feature(&mut self, line: &str) -> Option<String> {
-        Some(format!("{:} {}", self.current_line, line))
+        let result = Some(format!("{:} {}", self.current_line, line));
+        self.current_line += 1;
+        result
     }
 }
 
