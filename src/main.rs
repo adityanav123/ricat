@@ -23,7 +23,7 @@
 //! ricat -n my_file.txt
 //! ```
 //!
-//! ### Read a file with appending `$` at end of each line
+//! ### Read a file with `$` at end of each line
 //! ```bash
 //! ricat -d my_file.txt
 //! ```

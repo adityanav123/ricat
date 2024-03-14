@@ -33,10 +33,10 @@ ricat my_file.txt
 ricat my_file.txt -n
 ```
 
-### Read a File after appending `$` sign at the end of each Line
+### Read a File with `$` sign at the end of each Line
 
 ```bash
-ricat -h my_file.txt
+ricat -d my_file.txt
 ```
 
 ### Read from the Standard Input by User
