@@ -52,7 +52,9 @@ Adding new features to `ricat` is straightforward. Implement the `LineTextFeatur
 
 ## TBD
 [x] Remove the need of `-f` flag for reading the filename input
+
 [ ] Stand-in replacement for cat (if possible).
+
 [ ] return all the lines with a given pattern/word.
 
 ## Contributing
