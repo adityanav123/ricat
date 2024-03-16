@@ -35,6 +35,7 @@
 //! For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
 
 use clap::Parser;
+use regex::{escape, Regex};
 use std::{
     fs::File,
     io::{stdin, stdout, BufRead, BufReader, Error, Read, Write},
@@ -124,10 +125,41 @@ impl LineTextFeature for CompressEmptyLines {
     }
 }
 
+/// Feature: Returns Lines which contain a given text/regex
+struct LineWithGivenText {
+    search_regex: Regex,
+}
+
+impl LineWithGivenText {
+    fn new(text: &str) -> Self {
+        // Attempt to compile the text as a regular expression.
+        // If it fails, escape special characters and compile it as plain text.
+        let regex = Regex::new(text).unwrap_or_else(|_| {
+            let escaped_text = escape(text);
+            Regex::new(&escaped_text).unwrap()
+        });
+
+        Self {
+            search_regex: regex,
+        }
+    }
+}
+
+impl LineTextFeature for LineWithGivenText {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        // Use the compiled regex to search in the line
+        if self.search_regex.is_match(line) {
+            Some(line.to_string())
+        } else {
+            None
+        }
+    }
+}
+
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.2.1",
+    version = "0.3.0",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -136,7 +168,7 @@ struct Cli {
     #[clap(short = 'n', long, action = clap::ArgAction::SetTrue, help = "shows line numbers for each line")]
     numbers: bool,
 
-    #[clap(short = 'd', long, action = clap::ArgAction::SetTrue, help = "adds `$` to the last of each line")]
+    #[clap(short = 'd', long, action = clap::ArgAction::SetTrue, help = "adds `$` to mark end of each line")]
     dollar: bool,
 
     #[clap(short = 't', long, action = clap::ArgAction::SetTrue, help = "replaces the tab spaces in the text with ^I")]
@@ -145,36 +177,80 @@ struct Cli {
     #[clap(short = 's', long, action = clap::ArgAction::SetTrue, help = "suppress repeated empty output lines")]
     squeeze_blank: bool,
 
+    #[clap(long = "search", action = clap::ArgAction::SetTrue, help = "Search text inside file, returns all the lines containing the text")]
+    search_flag: bool,
+
+    #[clap(
+        long = "text",
+        help = "search text: only considered when --search flag is used."
+    )]
+    search_text: Option<String>,
+
     /// Optional file path to read from instead of standard input.
-    #[clap(help = "File you want to read")]
-    file: Option<String>,
+    #[clap(help = "File(s) you want to read, multiple files will be appended one after another")]
+    files: Vec<String>,
 }
 
 fn main() {
     let arguments = Cli::parse();
     let mut features: Vec<Box<dyn LineTextFeature>> = Vec::new(); // any implemented feature
 
-    // Determine the input source based on command line arguments
-    let input: Box<dyn Read> = match &arguments.file {
-        Some(file) => Box::new(BufReader::new(File::open(file).unwrap_or_else(|error| {
-            eprintln!("failed to open file!: {}", error);
-            exit(1);
-        }))),
-        None => Box::new(stdin()), // Default: read from standard input
-    };
-
     add_features_from_args(&arguments, &mut features);
 
-    if !features.is_empty() {
-        process_input_with_features(input, stdout(), &mut features).unwrap_or_else(|error| {
-            eprintln!("Error processing input : {}", error);
-            exit(1);
-        });
-    } else {
-        copy(input, stdout()).unwrap_or_else(|error| {
-            eprintln!("Error processing input: {}", error);
-            exit(1);
-        });
+    // Determine the input source based on command line arguments
+    match (arguments.files.is_empty(), features.is_empty()) {
+        (true, true) => {
+            // direct copy from standard input and pipe to standard output
+            let input = stdin();
+            let output = stdout();
+
+            copy(input, output).unwrap_or_else(|error| {
+                eprintln!("Error copying standard input to standard output {}", error);
+                exit(1);
+            });
+        }
+        (true, false) => {
+            let input = stdin();
+            let output = stdout();
+
+            // features still need to be processed from standard input
+            process_input(Box::new(input), output, &mut features).unwrap_or_else(|error| {
+                eprintln!("Error processing input {}", error);
+                exit(1);
+            });
+        }
+        (false, true) => {
+            // Files are specified
+            for file_path in &arguments.files {
+                let file = File::open(file_path).unwrap_or_else(|error| {
+                    eprintln!("Failed to open {}! {}", file_path, error);
+                    exit(1);
+                });
+                copy(BufReader::new(file), stdout()).unwrap_or_else(|error| {
+                    eprintln!(
+                        "Error copying file {} to standard output {}",
+                        file_path, error
+                    );
+                    exit(1);
+                });
+            }
+        }
+        (false, false) => {
+            for file_path in &arguments.files {
+                let file = File::open(file_path).unwrap_or_else(|error| {
+                    eprintln!("Failed to open {}! {}", file_path, error);
+                    exit(1);
+                });
+                process_input(Box::new(BufReader::new(file)), stdout(), &mut features)
+                    .unwrap_or_else(|error| {
+                        eprintln!(
+                            "Error processing file {} with features {}",
+                            file_path, error
+                        );
+                        exit(1);
+                    });
+            }
+        }
     }
 }
 
@@ -182,6 +258,14 @@ fn main() {
 fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFeature>>) {
     if arguments.squeeze_blank {
         features.push(Box::new(CompressEmptyLines::new()));
+    }
+
+    if arguments.search_flag {
+        let text_to_search = match &arguments.search_text {
+            None => "",
+            Some(text) => &text,
+        };
+        features.push(Box::new(LineWithGivenText::new(text_to_search.trim())));
     }
 
     if arguments.numbers {
@@ -213,7 +297,7 @@ fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Error> {
 }
 
 /// Processes input by applying each configured text feature to every line.
-fn process_input_with_features<R: Read, W: Write>(
+fn process_input<R: Read, W: Write>(
     reader: R,
     mut writer: W,
     features: &mut [Box<dyn LineTextFeature>],
@@ -238,4 +322,125 @@ fn process_input_with_features<R: Read, W: Write>(
         }
     }
     Ok(())
+}
+
+/*
+
+    UNIT TESTS FOR FEATURES
+
+*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn line_numbering_basic() {
+        let mut feature = LineNumbering::new();
+        let result = feature.apply_feature("Test line");
+        assert_eq!(result, Some("1 Test line".to_string()));
+    }
+
+    #[test]
+    fn line_numbering_increment() {
+        let mut feature = LineNumbering::new();
+        feature.apply_feature("First line");
+        let result = feature.apply_feature("Second line");
+        assert_eq!(result, Some("2 Second line".to_string()));
+    }
+
+    #[test]
+    fn dollar_symbol_at_last_basic() {
+        let mut feature = DollarSymbolAtLast::new();
+        let result = feature.apply_feature("Test line");
+        assert_eq!(result, Some("Test line$".to_string()));
+    }
+
+    #[test]
+    fn dollar_symbol_at_last_empty() {
+        let mut feature = DollarSymbolAtLast::new();
+        let result = feature.apply_feature("");
+        assert_eq!(result, Some("$".to_string()));
+    }
+
+    #[test]
+    fn replace_tabspaces_basic() {
+        let mut feature = ReplaceTabspaces::new();
+        let result = feature.apply_feature("Test\tline");
+        assert_eq!(result, Some("Test^Iline".to_string()));
+    }
+
+    #[test]
+    fn replace_tabspaces_no_tabs() {
+        let mut feature = ReplaceTabspaces::new();
+        let result = feature.apply_feature("Test line");
+        assert_eq!(result, Some("Test line".to_string()));
+    }
+
+    #[test]
+    fn compress_empty_lines_multiple() {
+        let mut feature = CompressEmptyLines::new();
+        feature.apply_feature("First line");
+        feature.apply_feature("");
+        let result = feature.apply_feature("");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn compress_empty_lines_single() {
+        let mut feature = CompressEmptyLines::new();
+        let result = feature.apply_feature("");
+        assert_eq!(result, Some("".to_string()));
+    }
+
+    #[test]
+    fn search_plain_text_found() {
+        let mut feature = LineWithGivenText::new("aditya");
+        assert_eq!(
+            feature.apply_feature("This is a line with aditya in it."),
+            Some("This is a line with aditya in it.".to_string())
+        );
+    }
+
+    #[test]
+    fn search_plain_text_not_found() {
+        let mut feature = LineWithGivenText::new("nonexistent");
+        assert!(feature
+            .apply_feature("This line does not contain the search text.")
+            .is_none());
+    }
+
+    #[test]
+    fn search_regex_single_digit_found() {
+        let mut feature = LineWithGivenText::new("\\d");
+        assert_eq!(
+            feature.apply_feature("This line has a 1 digit."),
+            Some("This line has a 1 digit.".to_string())
+        );
+    }
+
+    #[test]
+    fn search_regex_single_digit_not_found() {
+        let mut feature = LineWithGivenText::new("\\d");
+        assert!(feature.apply_feature("No digits here.").is_none());
+    }
+
+    #[test]
+    fn search_regex_exact_string() {
+        let mut feature = LineWithGivenText::new("aditya");
+        assert_eq!(
+            feature.apply_feature("Exact match aditya"),
+            Some("Exact match aditya".to_string())
+        );
+    }
+
+    #[test]
+    fn search_regex_special_characters() {
+        // Escaping is handled within the new function, users don't need to escape in the pattern.
+        let mut feature = LineWithGivenText::new("\\[aditya\\]");
+        assert_eq!(
+            feature.apply_feature("Line with [aditya]"),
+            Some("Line with [aditya]".to_string())
+        );
+    }
 }

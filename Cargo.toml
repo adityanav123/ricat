@@ -1,6 +1,6 @@
 [package]
 name = "ricat"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Aditya Navphule <adityanav@duck.com>"]
 description = "A Rust-Based implemenation of classic UNIX `cat` command"
@@ -14,3 +14,4 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5.2", features = ["derive"]}
+regex = "1.10.3"
