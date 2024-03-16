@@ -35,6 +35,7 @@
 //! For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
 
 use clap::Parser;
+use regex::{escape, Regex};
 use std::{
     fs::File,
     io::{stdin, stdout, BufRead, BufReader, Error, Read, Write},
@@ -124,6 +125,37 @@ impl LineTextFeature for CompressEmptyLines {
     }
 }
 
+/// Feature: Returns Lines which contain a given text/regex
+struct LineWithGivenText {
+    search_regex: Regex,
+}
+
+impl LineWithGivenText {
+    fn new(text: &str) -> Self {
+        // Attempt to compile the text as a regular expression.
+        // If it fails, escape special characters and compile it as plain text.
+        let regex = Regex::new(text).unwrap_or_else(|_| {
+            let escaped_text = escape(text);
+            Regex::new(&escaped_text).unwrap()
+        });
+
+        Self {
+            search_regex: regex,
+        }
+    }
+}
+
+impl LineTextFeature for LineWithGivenText {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        // Use the compiled regex to search in the line
+        if self.search_regex.is_match(line) {
+            Some(line.to_string())
+        } else {
+            None
+        }
+    }
+}
+
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
@@ -144,6 +176,15 @@ struct Cli {
 
     #[clap(short = 's', long, action = clap::ArgAction::SetTrue, help = "suppress repeated empty output lines")]
     squeeze_blank: bool,
+
+    #[clap(long = "search", action = clap::ArgAction::SetTrue, help = "Search text inside file, returns all the lines containing the text")]
+    search_flag: bool,
+
+    #[clap(
+        long = "text",
+        help = "search text: only considered when --search flag is used."
+    )]
+    search_text: Option<String>,
 
     /// Optional file path to read from instead of standard input.
     #[clap(help = "File(s) you want to read, multiple files will be appended one after another")]
@@ -173,12 +214,10 @@ fn main() {
             let output = stdout();
 
             // features still need to be processed from standard input
-            process_input(Box::new(input), output, &mut features).unwrap_or_else(
-                |error| {
-                    eprintln!("Error processing input {}", error);
-                    exit(1);
-                },
-            );
+            process_input(Box::new(input), output, &mut features).unwrap_or_else(|error| {
+                eprintln!("Error processing input {}", error);
+                exit(1);
+            });
         }
         (false, true) => {
             // Files are specified
@@ -202,18 +241,14 @@ fn main() {
                     eprintln!("Failed to open {}! {}", file_path, error);
                     exit(1);
                 });
-                process_input(
-                    Box::new(BufReader::new(file)),
-                    stdout(),
-                    &mut features,
-                )
-                .unwrap_or_else(|error| {
-                    eprintln!(
-                        "Error processing file {} with features {}",
-                        file_path, error
-                    );
-                    exit(1);
-                });
+                process_input(Box::new(BufReader::new(file)), stdout(), &mut features)
+                    .unwrap_or_else(|error| {
+                        eprintln!(
+                            "Error processing file {} with features {}",
+                            file_path, error
+                        );
+                        exit(1);
+                    });
             }
         }
     }
@@ -223,6 +258,14 @@ fn main() {
 fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFeature>>) {
     if arguments.squeeze_blank {
         features.push(Box::new(CompressEmptyLines::new()));
+    }
+
+    if arguments.search_flag {
+        let text_to_search = match &arguments.search_text {
+            None => "",
+            Some(text) => &text,
+        };
+        features.push(Box::new(LineWithGivenText::new(text_to_search.trim())));
     }
 
     if arguments.numbers {
@@ -280,8 +323,6 @@ fn process_input<R: Read, W: Write>(
     }
     Ok(())
 }
-
-
 
 /*
 
@@ -350,5 +391,56 @@ mod tests {
         let mut feature = CompressEmptyLines::new();
         let result = feature.apply_feature("");
         assert_eq!(result, Some("".to_string()));
+    }
+
+    #[test]
+    fn search_plain_text_found() {
+        let mut feature = LineWithGivenText::new("aditya");
+        assert_eq!(
+            feature.apply_feature("This is a line with aditya in it."),
+            Some("This is a line with aditya in it.".to_string())
+        );
+    }
+
+    #[test]
+    fn search_plain_text_not_found() {
+        let mut feature = LineWithGivenText::new("nonexistent");
+        assert!(feature
+            .apply_feature("This line does not contain the search text.")
+            .is_none());
+    }
+
+    #[test]
+    fn search_regex_single_digit_found() {
+        let mut feature = LineWithGivenText::new("\\d");
+        assert_eq!(
+            feature.apply_feature("This line has a 1 digit."),
+            Some("This line has a 1 digit.".to_string())
+        );
+    }
+
+    #[test]
+    fn search_regex_single_digit_not_found() {
+        let mut feature = LineWithGivenText::new("\\d");
+        assert!(feature.apply_feature("No digits here.").is_none());
+    }
+
+    #[test]
+    fn search_regex_exact_string() {
+        let mut feature = LineWithGivenText::new("aditya");
+        assert_eq!(
+            feature.apply_feature("Exact match aditya"),
+            Some("Exact match aditya".to_string())
+        );
+    }
+
+    #[test]
+    fn search_regex_special_characters() {
+        // Escaping is handled within the new function, users don't need to escape in the pattern.
+        let mut feature = LineWithGivenText::new("\\[aditya\\]");
+        assert_eq!(
+            feature.apply_feature("Line with [aditya]"),
+            Some("Line with [aditya]".to_string())
+        );
     }
 }
