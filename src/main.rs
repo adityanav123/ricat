@@ -127,7 +127,7 @@ impl LineTextFeature for CompressEmptyLines {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.2.0",
+    version = "0.3.0",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -136,7 +136,7 @@ struct Cli {
     #[clap(short = 'n', long, action = clap::ArgAction::SetTrue, help = "shows line numbers for each line")]
     numbers: bool,
 
-    #[clap(short = 'd', long, action = clap::ArgAction::SetTrue, help = "adds `$` to the last of each line")]
+    #[clap(short = 'd', long, action = clap::ArgAction::SetTrue, help = "adds `$` to mark end of each line")]
     dollar: bool,
 
     #[clap(short = 't', long, action = clap::ArgAction::SetTrue, help = "replaces the tab spaces in the text with ^I")]
@@ -146,35 +146,76 @@ struct Cli {
     squeeze_blank: bool,
 
     /// Optional file path to read from instead of standard input.
-    #[clap(help = "File you want to read")]
-    file: Option<String>,
+    #[clap(help = "File(s) you want to read, multiple files will be appended one after another")]
+    files: Vec<String>,
 }
 
 fn main() {
     let arguments = Cli::parse();
     let mut features: Vec<Box<dyn LineTextFeature>> = Vec::new(); // any implemented feature
 
-    // Determine the input source based on command line arguments
-    let input: Box<dyn Read> = match &arguments.file {
-        Some(file) => Box::new(BufReader::new(File::open(file).unwrap_or_else(|error| {
-            eprintln!("failed to open file!: {}", error);
-            exit(1);
-        }))),
-        None => Box::new(stdin()), // Default: read from standard input
-    };
-
     add_features_from_args(&arguments, &mut features);
 
-    if !features.is_empty() {
-        process_input_with_features(input, stdout(), &mut features).unwrap_or_else(|error| {
-            eprintln!("Error processing input : {}", error);
-            exit(1);
-        });
-    } else {
-        copy(input, stdout()).unwrap_or_else(|error| {
-            eprintln!("Error processing input: {}", error);
-            exit(1);
-        });
+    // Determine the input source based on command line arguments
+    match (arguments.files.is_empty(), features.is_empty()) {
+        (true, true) => {
+            // direct copy from standard input and pipe to standard output
+            let input = stdin();
+            let output = stdout();
+
+            copy(input, output).unwrap_or_else(|error| {
+                eprintln!("Error copying standard input to standard output {}", error);
+                exit(1);
+            });
+        }
+        (true, false) => {
+            let input = stdin();
+            let output = stdout();
+
+            // features still need to be processed from standard input
+            process_input(Box::new(input), output, &mut features).unwrap_or_else(
+                |error| {
+                    eprintln!("Error processing input {}", error);
+                    exit(1);
+                },
+            );
+        }
+        (false, true) => {
+            // Files are specified
+            for file_path in &arguments.files {
+                let file = File::open(file_path).unwrap_or_else(|error| {
+                    eprintln!("Failed to open {}! {}", file_path, error);
+                    exit(1);
+                });
+                copy(BufReader::new(file), stdout()).unwrap_or_else(|error| {
+                    eprintln!(
+                        "Error copying file {} to standard output {}",
+                        file_path, error
+                    );
+                    exit(1);
+                });
+            }
+        }
+        (false, false) => {
+            for file_path in &arguments.files {
+                let file = File::open(file_path).unwrap_or_else(|error| {
+                    eprintln!("Failed to open {}! {}", file_path, error);
+                    exit(1);
+                });
+                process_input(
+                    Box::new(BufReader::new(file)),
+                    stdout(),
+                    &mut features,
+                )
+                .unwrap_or_else(|error| {
+                    eprintln!(
+                        "Error processing file {} with features {}",
+                        file_path, error
+                    );
+                    exit(1);
+                });
+            }
+        }
     }
 }
 
@@ -213,7 +254,7 @@ fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Error> {
 }
 
 /// Processes input by applying each configured text feature to every line.
-fn process_input_with_features<R: Read, W: Write>(
+fn process_input<R: Read, W: Write>(
     reader: R,
     mut writer: W,
     features: &mut [Box<dyn LineTextFeature>],
@@ -238,4 +279,76 @@ fn process_input_with_features<R: Read, W: Write>(
         }
     }
     Ok(())
+}
+
+
+
+/*
+
+    UNIT TESTS FOR FEATURES
+
+*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn line_numbering_basic() {
+        let mut feature = LineNumbering::new();
+        let result = feature.apply_feature("Test line");
+        assert_eq!(result, Some("1 Test line".to_string()));
+    }
+
+    #[test]
+    fn line_numbering_increment() {
+        let mut feature = LineNumbering::new();
+        feature.apply_feature("First line");
+        let result = feature.apply_feature("Second line");
+        assert_eq!(result, Some("2 Second line".to_string()));
+    }
+
+    #[test]
+    fn dollar_symbol_at_last_basic() {
+        let mut feature = DollarSymbolAtLast::new();
+        let result = feature.apply_feature("Test line");
+        assert_eq!(result, Some("Test line$".to_string()));
+    }
+
+    #[test]
+    fn dollar_symbol_at_last_empty() {
+        let mut feature = DollarSymbolAtLast::new();
+        let result = feature.apply_feature("");
+        assert_eq!(result, Some("$".to_string()));
+    }
+
+    #[test]
+    fn replace_tabspaces_basic() {
+        let mut feature = ReplaceTabspaces::new();
+        let result = feature.apply_feature("Test\tline");
+        assert_eq!(result, Some("Test^Iline".to_string()));
+    }
+
+    #[test]
+    fn replace_tabspaces_no_tabs() {
+        let mut feature = ReplaceTabspaces::new();
+        let result = feature.apply_feature("Test line");
+        assert_eq!(result, Some("Test line".to_string()));
+    }
+
+    #[test]
+    fn compress_empty_lines_multiple() {
+        let mut feature = CompressEmptyLines::new();
+        feature.apply_feature("First line");
+        feature.apply_feature("");
+        let result = feature.apply_feature("");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn compress_empty_lines_single() {
+        let mut feature = CompressEmptyLines::new();
+        let result = feature.apply_feature("");
+        assert_eq!(result, Some("".to_string()));
+    }
 }
