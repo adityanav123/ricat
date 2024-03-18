@@ -34,13 +34,31 @@
 //!
 //! For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
 
+extern crate termion;
 use clap::Parser;
+use crossterm::{
+    cursor::{Hide, Show},
+    event::{read, Event},
+    execute,
+    terminal::{Clear, ClearType},
+};
 use regex::{escape, Regex};
 use std::{
     fs::File,
-    io::{stdin, stdout, BufRead, BufReader, Error, Read, Write},
+    io::{self, stdin, stdout, BufRead, BufReader, Error, Read, Write},
     process::exit,
 };
+
+use termion::terminal_size;
+
+/// Pagination Feature for `ricat`
+fn get_terminal_height() -> u16 {
+    if let Ok((_, height)) = terminal_size() {
+        height
+    } else {
+        24 // default
+    }
+}
 
 /// Trait defining a text feature that can be applied to lines of input.
 trait LineTextFeature {
@@ -159,7 +177,7 @@ impl LineTextFeature for LineWithGivenText {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.3.0",
+    version = "0.3.1",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -186,6 +204,9 @@ struct Cli {
     )]
     search_text: Option<String>,
 
+    #[clap(long = "pages", help = "apply pagination to the output")]
+    pagination: bool,
+
     /// Optional file path to read from instead of standard input.
     #[clap(help = "File(s) you want to read, multiple files will be appended one after another")]
     files: Vec<String>,
@@ -200,57 +221,148 @@ fn main() {
     // Determine the input source based on command line arguments
     match (arguments.files.is_empty(), features.is_empty()) {
         (true, true) => {
-            // direct copy from standard input and pipe to standard output
-            let input = stdin();
-            let output = stdout();
-
-            copy(input, output).unwrap_or_else(|error| {
-                eprintln!("Error copying standard input to standard output {}", error);
-                exit(1);
-            });
-        }
-        (true, false) => {
-            let input = stdin();
-            let output = stdout();
-
-            // features still need to be processed from standard input
-            process_input(Box::new(input), output, &mut features).unwrap_or_else(|error| {
-                eprintln!("Error processing input {}", error);
-                exit(1);
-            });
-        }
-        (false, true) => {
-            // Files are specified
-            for file_path in &arguments.files {
-                let file = File::open(file_path).unwrap_or_else(|error| {
-                    eprintln!("Failed to open {}! {}", file_path, error);
+            // applying pagination
+            if arguments.pagination {
+                let input = stdin();
+                let processed_lines = process_input_ret(input.lock(), &mut features)
+                    .unwrap_or_else(|error| {
+                        eprintln!("Error processing the features! {}", error);
+                        exit(1);
+                    });
+                //paginate the feature processed lines
+                paginate_output(processed_lines, stdout()).unwrap_or_else(|error| {
+                    eprintln!("Error paginating. {}", error);
                     exit(1);
                 });
-                copy(BufReader::new(file), stdout()).unwrap_or_else(|error| {
-                    eprintln!(
-                        "Error copying file {} to standard output {}",
-                        file_path, error
-                    );
+            } else {
+                // direct copy from standard input and pipe to standard output
+                let input = stdin();
+                let output = stdout();
+
+                copy(input, output).unwrap_or_else(|error| {
+                    eprintln!("Error copying standard input to standard output {}", error);
                     exit(1);
                 });
             }
         }
-        (false, false) => {
-            for file_path in &arguments.files {
-                let file = File::open(file_path).unwrap_or_else(|error| {
-                    eprintln!("Failed to open {}! {}", file_path, error);
+        (true, false) | (false, false) => {
+            let reader_sources: Vec<Box<dyn Read>> = if arguments.files.is_empty() {
+                vec![Box::new(stdin())]
+            } else {
+                arguments
+                    .files
+                    .iter()
+                    .map(|file_path| {
+                        let file = File::open(file_path).unwrap_or_else(|error| {
+                            eprintln!("Failed to open {}! Error: {}", file_path, error);
+                            exit(1);
+                        });
+                        Box::new(file) as Box<dyn Read>
+                    })
+                    .collect()
+            };
+
+            let mut all_processed_lines = Vec::<String>::new();
+            for source in reader_sources {
+                let processed_lines =
+                    process_input_ret(source, &mut features).unwrap_or_else(|error| {
+                        eprintln!("Error processing Line! {}", error);
+                        exit(1);
+                    });
+                all_processed_lines.extend(processed_lines);
+            }
+
+            // check if pagination enabled
+            if arguments.pagination {
+                paginate_output(all_processed_lines, stdout()).unwrap_or_else(|error| {
+                    eprintln!("Error: paginating = {}", error);
                     exit(1);
                 });
-                process_input(Box::new(BufReader::new(file)), stdout(), &mut features)
-                    .unwrap_or_else(|error| {
+            } else {
+                for line in all_processed_lines {
+                    println!("{}", line);
+                }
+            }
+        }
+        (false, true) => {
+            // without features
+            if arguments.pagination {
+                let mut all_lines = Vec::<String>::new();
+                for file_path in &arguments.files {
+                    let file = File::open(file_path).unwrap_or_else(|error| {
+                        eprintln!("Error in opening file {}! {}", file_path, error);
+                        exit(1);
+                    });
+                    let processed_lines = process_input_ret(BufReader::new(file), &mut features)
+                        .unwrap_or_else(|error| {
+                            eprintln!("Error processing Line! {}", error);
+                            exit(1);
+                        });
+
+                    all_lines.extend(processed_lines);
+                }
+                paginate_output(all_lines, stdout()).unwrap_or_else(|error| {
+                    eprintln!("Error: paginating = {}", error);
+                    exit(1);
+                });
+            } else {
+                // Directly copy files to standard output
+                for file_path in &arguments.files {
+                    let file = File::open(file_path).unwrap_or_else(|error| {
+                        eprintln!("Failed to open {}! {}", file_path, error);
+                        exit(1);
+                    });
+                    copy(BufReader::new(file), stdout()).unwrap_or_else(|error| {
                         eprintln!(
-                            "Error processing file {} with features {}",
+                            "Error copying file {} to standard output {}",
                             file_path, error
                         );
                         exit(1);
                     });
+                }
             }
-        }
+        } // (true, false) => {
+          //     let input = stdin();
+          //     let output = stdout();
+
+          //     // features still need to be processed from standard input
+          //     process_input(Box::new(input), output, &mut features).unwrap_or_else(|error| {
+          //         eprintln!("Error processing input {}", error);
+          //         exit(1);
+          //     });
+          // }
+          // (false, true) => {
+          //     // Files are specified
+          //     for file_path in &arguments.files {
+          //         let file = File::open(file_path).unwrap_or_else(|error| {
+          //             eprintln!("Failed to open {}! {}", file_path, error);
+          //             exit(1);
+          //         });
+          //         copy(BufReader::new(file), stdout()).unwrap_or_else(|error| {
+          //             eprintln!(
+          //                 "Error copying file {} to standard output {}",
+          //                 file_path, error
+          //             );
+          //             exit(1);
+          //         });
+          //     }
+          // }
+          // (false, false) => {
+          //     for file_path in &arguments.files {
+          //         let file = File::open(file_path).unwrap_or_else(|error| {
+          //             eprintln!("Failed to open {}! {}", file_path, error);
+          //             exit(1);
+          //         });
+          //         process_input(Box::new(BufReader::new(file)), stdout(), &mut features)
+          //             .unwrap_or_else(|error| {
+          //                 eprintln!(
+          //                     "Error processing file {} with features {}",
+          //                     file_path, error
+          //                 );
+          //                 exit(1);
+          //             });
+          //     }
+          // }
     }
 }
 
@@ -296,31 +408,133 @@ fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Error> {
     Ok(())
 }
 
+
+// fn process_input<R: Read, W: Write>(
+//     reader: R,
+//     mut writer: W,
+//     features: &mut [Box<dyn LineTextFeature>],
+// ) -> Result<(), Error> {
+//     let buf_reader = BufReader::new(reader);
+//     for line_result in buf_reader.lines() {
+//         let line = line_result?;
+//         let mut processed_line = Some(line);
+
+//         for feature in features.iter_mut() {
+//             if let Some(current_line) = processed_line {
+//                 // Apply each feature to the line if it's not None
+//                 processed_line = feature.apply_feature(&current_line);
+//             } else {
+//                 // If a feature returned None, stop processing this line and skip to the next one
+//                 break;
+//             }
+//         }
+
+//         if let Some(current_line) = processed_line {
+//             writeln!(writer, "{}", current_line)?;
+//         }
+//     }
+//     Ok(())
+// }
+
 /// Processes input by applying each configured text feature to every line.
-fn process_input<R: Read, W: Write>(
+fn process_input_ret<R: Read>(
     reader: R,
-    mut writer: W,
     features: &mut [Box<dyn LineTextFeature>],
-) -> Result<(), Error> {
+) -> Result<Vec<String>, Error> {
     let buf_reader = BufReader::new(reader);
+    let mut processed_lines = Vec::new();
+
     for line_result in buf_reader.lines() {
         let line = line_result?;
         let mut processed_line = Some(line);
 
         for feature in features.iter_mut() {
             if let Some(current_line) = processed_line {
-                // Apply each feature to the line if it's not None
                 processed_line = feature.apply_feature(&current_line);
             } else {
-                // If a feature returned None, stop processing this line and skip to the next one
                 break;
             }
         }
 
         if let Some(current_line) = processed_line {
-            writeln!(writer, "{}", current_line)?;
+            processed_lines.push(current_line);
         }
     }
+    Ok(processed_lines)
+}
+
+/// Paginate output
+fn paginate_output<W: Write>(lines: Vec<String>, mut writer: W) -> io::Result<()> {
+    let terminal_height = get_terminal_height() as usize;
+    let page_size = terminal_height.saturating_sub(1);
+
+    for (index, line) in lines.iter().enumerate() {
+        writeln!(writer, "{}", line)?;
+        if (index + 1) % page_size == 0 {
+            wait_for_user_input(&mut writer)?;
+        }
+    }
+    Ok(())
+}
+
+
+// fn paginate_the_output<R: BufRead, W: Write>(reader: R, mut writer: W) -> io::Result<()> {
+//     let mut line_buffer = Vec::new();
+//     // stores the lines in a single page
+
+//     let terminal_height = get_terminal_height() as usize;
+//     // get current height of the terminal, pagination will be done according to that
+
+//     let page_size = terminal_height.saturating_sub(1);
+//     // will not overflow
+
+//     // reading lines from the reader
+//     for curr_line in reader.lines() {
+//         line_buffer.push(curr_line?);
+
+//         // page is completed filled
+//         if line_buffer.len() >= page_size {
+//             for buffered_line in line_buffer.iter() {
+//                 writeln!(writer, "{}", buffered_line)?;
+//             }
+//             // wait for user input
+//             wait_for_user_input(&mut writer)?;
+//             line_buffer.clear();
+//         }
+//     }
+
+//     // remaining lines
+//     for buffered_lines in line_buffer.iter() {
+//         writeln!(writer, "{}", buffered_lines)?;
+//     }
+
+//     Ok(())
+// }
+
+/// Waiting for User Input
+fn wait_for_user_input<W: Write>(writer: &mut W) -> io::Result<()> {
+    execute!(writer, Hide)?; // Hide the cursor to make the UI cleaner.
+
+    write!(writer, "--More--(press any key)")?;
+    writer.flush()?;
+
+    // Enter raw mode to read key presses without echoing them.
+    crossterm::terminal::enable_raw_mode()?;
+
+    loop {
+        match read()? {
+            Event::Key(_) => break, // Exit loop on any key press.
+            _ => continue,
+        }
+    }
+
+    crossterm::terminal::disable_raw_mode()?;
+    execute!(writer, Show)?; // Show the cursor again.
+
+    // Clear the "--More--" line.
+    execute!(writer, Clear(ClearType::CurrentLine))?;
+    write!(writer, "\r")?; // Move cursor to the beginning of the line
+
     Ok(())
 }
 
@@ -354,13 +568,6 @@ mod tests {
         let mut feature = DollarSymbolAtLast::new();
         let result = feature.apply_feature("Test line");
         assert_eq!(result, Some("Test line$".to_string()));
-    }
-
-    #[test]
-    fn dollar_symbol_at_last_empty() {
-        let mut feature = DollarSymbolAtLast::new();
-        let result = feature.apply_feature("");
-        assert_eq!(result, Some("$".to_string()));
     }
 
     #[test]
@@ -442,5 +649,50 @@ mod tests {
             feature.apply_feature("Line with [aditya]"),
             Some("Line with [aditya]".to_string())
         );
+    }
+
+    #[test]
+    fn pagination_with_few_lines() {
+        let lines = (1..10).map(|i| i.to_string()).collect::<Vec<String>>();
+        let mut output = Vec::new();
+        paginate_output(lines, &mut output).unwrap();
+        let output_str = String::from_utf8(output).unwrap();
+
+        // Check that all lines are present in the output
+        for i in 1..10 {
+            assert!(output_str.contains(&i.to_string()));
+        }
+
+        // Ensure the pagination prompt does not appear
+        assert!(!output_str.contains("--More--"));
+    }
+
+    #[test]
+    fn feature_application_on_empty_input() {
+        let mut feature = DollarSymbolAtLast::new();
+        let result = feature.apply_feature("");
+        assert_eq!(result, Some("$".to_string()));
+    }
+
+    #[test]
+    fn line_numbering_resets() {
+        let mut feature = LineNumbering::new();
+        feature.apply_feature("First line");
+        feature.apply_feature("Second line");
+
+        // Simulate processing a new input source by creating a new instance
+        let mut feature_new = LineNumbering::new();
+        let result = feature_new.apply_feature("New first line");
+        assert_eq!(result, Some("1 New first line".to_string()));
+    }
+
+    #[test]
+    fn search_feature_with_regex() {
+        let mut feature = LineWithGivenText::new(r"\d+"); // Matches any digit
+        let line_with_number = feature.apply_feature("This is line 42");
+        let line_without_number = feature.apply_feature("This line has no numbers");
+
+        assert_eq!(line_with_number, Some("This is line 42".to_string()));
+        assert!(line_without_number.is_none());
     }
 }

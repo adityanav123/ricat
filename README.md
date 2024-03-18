@@ -90,6 +90,9 @@ Contributions are welcome! If you have ideas for new features or improvements, p
 
 ## Release Notes
 
+### 0.3.1
+- Added ability to do pagination according to your current terminal window size [`--pages` flag]
+
 ### 0.3.0
 - Added ability to combine multiple files in output.
 - Added ability to search text/regular expression in the file.
