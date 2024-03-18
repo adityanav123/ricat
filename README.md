@@ -90,7 +90,7 @@ Contributions are welcome! If you have ideas for new features or improvements, p
 
 ## Release Notes
 
-### 0.3.1
+### 0.3.2
 - Added ability to do pagination according to your current terminal window size [`--pages` flag]
 
 ### 0.3.0
