@@ -69,7 +69,7 @@ ricat --search --text "\d+" my_file.txt
 * This behavior allows `ricat` to be used in a pipeline of commands, where it can receive input from a previous command and pass its output to the next command. Without any arguments, `ricat` effectively acts as a simple text editor that displays what you type in real-time, making it useful for creating short text files directly from the command line by redirecting the output to a file using the > operator.
 
 ```bash
-echo "Hello, World!" | ricat
+ricat
 ```
 
 ## Extending ricat
@@ -90,7 +90,7 @@ Contributions are welcome! If you have ideas for new features or improvements, p
 
 ## Release Notes
 
-### 0.3.1
+### 0.3.2
 - Added ability to do pagination according to your current terminal window size [`--pages` flag]
 
 ### 0.3.0
