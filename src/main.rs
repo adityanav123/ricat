@@ -321,48 +321,7 @@ fn main() {
                     });
                 }
             }
-        } // (true, false) => {
-          //     let input = stdin();
-          //     let output = stdout();
-
-          //     // features still need to be processed from standard input
-          //     process_input(Box::new(input), output, &mut features).unwrap_or_else(|error| {
-          //         eprintln!("Error processing input {}", error);
-          //         exit(1);
-          //     });
-          // }
-          // (false, true) => {
-          //     // Files are specified
-          //     for file_path in &arguments.files {
-          //         let file = File::open(file_path).unwrap_or_else(|error| {
-          //             eprintln!("Failed to open {}! {}", file_path, error);
-          //             exit(1);
-          //         });
-          //         copy(BufReader::new(file), stdout()).unwrap_or_else(|error| {
-          //             eprintln!(
-          //                 "Error copying file {} to standard output {}",
-          //                 file_path, error
-          //             );
-          //             exit(1);
-          //         });
-          //     }
-          // }
-          // (false, false) => {
-          //     for file_path in &arguments.files {
-          //         let file = File::open(file_path).unwrap_or_else(|error| {
-          //             eprintln!("Failed to open {}! {}", file_path, error);
-          //             exit(1);
-          //         });
-          //         process_input(Box::new(BufReader::new(file)), stdout(), &mut features)
-          //             .unwrap_or_else(|error| {
-          //                 eprintln!(
-          //                     "Error processing file {} with features {}",
-          //                     file_path, error
-          //                 );
-          //                 exit(1);
-          //             });
-          //     }
-          // }
+        }
     }
 }
 
@@ -408,34 +367,6 @@ fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Error> {
     Ok(())
 }
 
-
-// fn process_input<R: Read, W: Write>(
-//     reader: R,
-//     mut writer: W,
-//     features: &mut [Box<dyn LineTextFeature>],
-// ) -> Result<(), Error> {
-//     let buf_reader = BufReader::new(reader);
-//     for line_result in buf_reader.lines() {
-//         let line = line_result?;
-//         let mut processed_line = Some(line);
-
-//         for feature in features.iter_mut() {
-//             if let Some(current_line) = processed_line {
-//                 // Apply each feature to the line if it's not None
-//                 processed_line = feature.apply_feature(&current_line);
-//             } else {
-//                 // If a feature returned None, stop processing this line and skip to the next one
-//                 break;
-//             }
-//         }
-
-//         if let Some(current_line) = processed_line {
-//             writeln!(writer, "{}", current_line)?;
-//         }
-//     }
-//     Ok(())
-// }
-
 /// Processes input by applying each configured text feature to every line.
 fn process_input_ret<R: Read>(
     reader: R,
@@ -477,43 +408,9 @@ fn paginate_output<W: Write>(lines: Vec<String>, mut writer: W) -> io::Result<()
     Ok(())
 }
 
-
-// fn paginate_the_output<R: BufRead, W: Write>(reader: R, mut writer: W) -> io::Result<()> {
-//     let mut line_buffer = Vec::new();
-//     // stores the lines in a single page
-
-//     let terminal_height = get_terminal_height() as usize;
-//     // get current height of the terminal, pagination will be done according to that
-
-//     let page_size = terminal_height.saturating_sub(1);
-//     // will not overflow
-
-//     // reading lines from the reader
-//     for curr_line in reader.lines() {
-//         line_buffer.push(curr_line?);
-
-//         // page is completed filled
-//         if line_buffer.len() >= page_size {
-//             for buffered_line in line_buffer.iter() {
-//                 writeln!(writer, "{}", buffered_line)?;
-//             }
-//             // wait for user input
-//             wait_for_user_input(&mut writer)?;
-//             line_buffer.clear();
-//         }
-//     }
-
-//     // remaining lines
-//     for buffered_lines in line_buffer.iter() {
-//         writeln!(writer, "{}", buffered_lines)?;
-//     }
-
-//     Ok(())
-// }
-
 /// Waiting for User Input
 fn wait_for_user_input<W: Write>(writer: &mut W) -> io::Result<()> {
-    execute!(writer, Hide)?; // Hide the cursor to make the UI cleaner.
+    execute!(writer, Hide)?;
 
     write!(writer, "--More--(press any key)")?;
     writer.flush()?;
@@ -523,7 +420,8 @@ fn wait_for_user_input<W: Write>(writer: &mut W) -> io::Result<()> {
 
     loop {
         match read()? {
-            Event::Key(_) => break, // Exit loop on any key press.
+            // Exit loop on any key press.
+            Event::Key(_) => break,
             _ => continue,
         }
     }
@@ -538,161 +436,4 @@ fn wait_for_user_input<W: Write>(writer: &mut W) -> io::Result<()> {
     Ok(())
 }
 
-/*
-
-    UNIT TESTS FOR FEATURES
-
-*/
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn line_numbering_basic() {
-        let mut feature = LineNumbering::new();
-        let result = feature.apply_feature("Test line");
-        assert_eq!(result, Some("1 Test line".to_string()));
-    }
-
-    #[test]
-    fn line_numbering_increment() {
-        let mut feature = LineNumbering::new();
-        feature.apply_feature("First line");
-        let result = feature.apply_feature("Second line");
-        assert_eq!(result, Some("2 Second line".to_string()));
-    }
-
-    #[test]
-    fn dollar_symbol_at_last_basic() {
-        let mut feature = DollarSymbolAtLast::new();
-        let result = feature.apply_feature("Test line");
-        assert_eq!(result, Some("Test line$".to_string()));
-    }
-
-    #[test]
-    fn replace_tabspaces_basic() {
-        let mut feature = ReplaceTabspaces::new();
-        let result = feature.apply_feature("Test\tline");
-        assert_eq!(result, Some("Test^Iline".to_string()));
-    }
-
-    #[test]
-    fn replace_tabspaces_no_tabs() {
-        let mut feature = ReplaceTabspaces::new();
-        let result = feature.apply_feature("Test line");
-        assert_eq!(result, Some("Test line".to_string()));
-    }
-
-    #[test]
-    fn compress_empty_lines_multiple() {
-        let mut feature = CompressEmptyLines::new();
-        feature.apply_feature("First line");
-        feature.apply_feature("");
-        let result = feature.apply_feature("");
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn compress_empty_lines_single() {
-        let mut feature = CompressEmptyLines::new();
-        let result = feature.apply_feature("");
-        assert_eq!(result, Some("".to_string()));
-    }
-
-    #[test]
-    fn search_plain_text_found() {
-        let mut feature = LineWithGivenText::new("aditya");
-        assert_eq!(
-            feature.apply_feature("This is a line with aditya in it."),
-            Some("This is a line with aditya in it.".to_string())
-        );
-    }
-
-    #[test]
-    fn search_plain_text_not_found() {
-        let mut feature = LineWithGivenText::new("nonexistent");
-        assert!(feature
-            .apply_feature("This line does not contain the search text.")
-            .is_none());
-    }
-
-    #[test]
-    fn search_regex_single_digit_found() {
-        let mut feature = LineWithGivenText::new("\\d");
-        assert_eq!(
-            feature.apply_feature("This line has a 1 digit."),
-            Some("This line has a 1 digit.".to_string())
-        );
-    }
-
-    #[test]
-    fn search_regex_single_digit_not_found() {
-        let mut feature = LineWithGivenText::new("\\d");
-        assert!(feature.apply_feature("No digits here.").is_none());
-    }
-
-    #[test]
-    fn search_regex_exact_string() {
-        let mut feature = LineWithGivenText::new("aditya");
-        assert_eq!(
-            feature.apply_feature("Exact match aditya"),
-            Some("Exact match aditya".to_string())
-        );
-    }
-
-    #[test]
-    fn search_regex_special_characters() {
-        // Escaping is handled within the new function, users don't need to escape in the pattern.
-        let mut feature = LineWithGivenText::new("\\[aditya\\]");
-        assert_eq!(
-            feature.apply_feature("Line with [aditya]"),
-            Some("Line with [aditya]".to_string())
-        );
-    }
-
-    #[test]
-    fn pagination_with_few_lines() {
-        let lines = (1..10).map(|i| i.to_string()).collect::<Vec<String>>();
-        let mut output = Vec::new();
-        paginate_output(lines, &mut output).unwrap();
-        let output_str = String::from_utf8(output).unwrap();
-
-        // Check that all lines are present in the output
-        for i in 1..10 {
-            assert!(output_str.contains(&i.to_string()));
-        }
-
-        // Ensure the pagination prompt does not appear
-        assert!(!output_str.contains("--More--"));
-    }
-
-    #[test]
-    fn feature_application_on_empty_input() {
-        let mut feature = DollarSymbolAtLast::new();
-        let result = feature.apply_feature("");
-        assert_eq!(result, Some("$".to_string()));
-    }
-
-    #[test]
-    fn line_numbering_resets() {
-        let mut feature = LineNumbering::new();
-        feature.apply_feature("First line");
-        feature.apply_feature("Second line");
-
-        // Simulate processing a new input source by creating a new instance
-        let mut feature_new = LineNumbering::new();
-        let result = feature_new.apply_feature("New first line");
-        assert_eq!(result, Some("1 New first line".to_string()));
-    }
-
-    #[test]
-    fn search_feature_with_regex() {
-        let mut feature = LineWithGivenText::new(r"\d+"); // Matches any digit
-        let line_with_number = feature.apply_feature("This is line 42");
-        let line_without_number = feature.apply_feature("This line has no numbers");
-
-        assert_eq!(line_with_number, Some("This is line 42".to_string()));
-        assert!(line_without_number.is_none());
-    }
-}
+mod tests;
