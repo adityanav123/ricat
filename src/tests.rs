@@ -1,8 +1,5 @@
-/*
-
-    UNIT TESTS FOR FEATURES
-
-*/
+//! Unit Tests for ricat : `cargo test` to run all the tests at once
+//! for indiviual tests : `cargo test test-name` will run all those tests, which contain test-name
 #[cfg(test)]
 mod tests {
     use crate::*;

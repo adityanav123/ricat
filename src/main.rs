@@ -34,13 +34,12 @@
 //!
 //! For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
 
-extern crate termion;
 use clap::Parser;
 use crossterm::{
     cursor::{Hide, Show},
     event::{read, Event},
     execute,
-    terminal::{Clear, ClearType},
+    terminal::{self, Clear, ClearType},
 };
 use regex::{escape, Regex};
 use std::{
@@ -49,14 +48,11 @@ use std::{
     process::exit,
 };
 
-use termion::terminal_size;
-
-/// Pagination Feature for `ricat`
+/// get current user terminal height for pagination
 fn get_terminal_height() -> u16 {
-    if let Ok((_, height)) = terminal_size() {
-        height
-    } else {
-        24 // default
+    match terminal::size() {
+        Ok((_, height)) => height,
+        Err(_) => 24, //default
     }
 }
 
@@ -110,7 +106,7 @@ impl ReplaceTabspaces {
 
 impl LineTextFeature for ReplaceTabspaces {
     fn apply_feature(&mut self, line: &str) -> Option<String> {
-        Some(line.replace("\t", "^I"))
+        Some(line.replace('\t', "^I"))
     }
 }
 
@@ -171,6 +167,24 @@ impl LineTextFeature for LineWithGivenText {
         } else {
             None
         }
+    }
+}
+
+/// DataEncoding Trait : for Encoding and Decoding Files
+trait DataEncoding {
+    fn encode(&self, data: &[u8]) -> String;
+    fn decode(&self, text: &str) -> Result<Vec<u8>, String>;
+}
+
+/// Encoding Feature: Base64 Encoding
+struct Base64Encoding;
+impl DataEncoding for Base64Encoding {
+    fn encode(&self, data: &[u8]) -> String {
+        todo!("check documentation");
+    }
+
+    fn decode(&self, text: &str) -> Result<Vec<u8>, String> {
+        todo!("check documentation");
     }
 }
 
@@ -334,7 +348,7 @@ fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFe
     if arguments.search_flag {
         let text_to_search = match &arguments.search_text {
             None => "",
-            Some(text) => &text,
+            Some(text) => text,
         };
         features.push(Box::new(LineWithGivenText::new(text_to_search.trim())));
     }

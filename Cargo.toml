@@ -15,5 +15,5 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4.5.2", features = ["derive"]}
 regex = "1.10.3"
-termion = "3.0.0"
 crossterm = "0.27.0"
+base64 = "0.22.0"
