@@ -72,6 +72,20 @@ ricat --search --text "\d+" my_file.txt
 ricat
 ```
 
+### Piping output from another command to `ricat`
+
+```bash
+df | ricat --search --text "/dev/nvme0"
+```
+This command will show the disk space usage for all the partitions of drive nvme0
+
+### Show all features currently implemented for `ricat`
+
+```bash
+ricat --help
+```
+
+
 ## Extending ricat
 
 Adding new features to `ricat` is straightforward. Implement the `LineTextFeature` trait for any struct to create a new feature. For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
@@ -83,12 +97,21 @@ Adding new features to `ricat` is straightforward. Implement the `LineTextFeatur
 
 [ ] Stand-in replacement for cat (if possible).
 
+[ ] Feature: Adding Encoding and Decoding ability (Eg. base64) [In Process]
+
 
 ## Contributing
 
 Contributions are welcome! If you have ideas for new features or improvements, please feel free to submit a pull request or open an issue.
 
+## Bug Reporting
+
+To report bugs, you can go to the [GitHub Discussions](https://github.com/adityanav123/ricat/discussions/11#discussion-6424900)
+
 ## Release Notes
+
+### 0.3.3
+- Bug Fixes: `ricat` without any file input was not applying feature on standard input mode.
 
 ### 0.3.2
 - Added ability to do pagination according to your current terminal window size [`--pages` flag]
