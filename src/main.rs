@@ -68,7 +68,6 @@ struct LineNumbering {
 }
 
 impl LineNumbering {
-    /// Constructs a new `LineNumbering` feature.
     fn new() -> Self {
         Self { current_line: 1 }
     }
@@ -179,12 +178,12 @@ trait DataEncoding {
 /// Encoding Feature: Base64 Encoding
 struct Base64Encoding;
 impl DataEncoding for Base64Encoding {
-    fn encode(&self, data: &[u8]) -> String {
-        todo!("check documentation");
+    fn encode(&self, _data: &[u8]) -> String {
+        todo!("have to check documentation");
     }
 
-    fn decode(&self, text: &str) -> Result<Vec<u8>, String> {
-        todo!("check documentation");
+    fn decode(&self, _text: &str) -> Result<Vec<u8>, String> {
+        todo!("have to check documentation");
     }
 }
 
@@ -276,25 +275,33 @@ fn main() {
                     .collect()
             };
 
-            let mut all_processed_lines = Vec::<String>::new();
-            for source in reader_sources {
-                let processed_lines =
-                    process_input_ret(source, &mut features).unwrap_or_else(|error| {
-                        eprintln!("Error processing Line! {}", error);
-                        exit(1);
-                    });
-                all_processed_lines.extend(processed_lines);
-            }
-
-            // check if pagination enabled
-            if arguments.pagination {
-                paginate_output(all_processed_lines, stdout()).unwrap_or_else(|error| {
-                    eprintln!("Error: paginating = {}", error);
+            // standard input
+            if arguments.files.is_empty() {
+                process_input_stdout(Box::new(stdin()), &mut features).unwrap_or_else(|error| {
+                    eprintln!("Error processing Line! {}", error);
                     exit(1);
                 });
             } else {
-                for line in all_processed_lines {
-                    println!("{}", line);
+                let mut all_processed_lines = Vec::<String>::new();
+                for source in reader_sources {
+                    let processed_lines =
+                        process_input_ret(source, &mut features).unwrap_or_else(|error| {
+                            eprintln!("Error processing Line! {}", error);
+                            exit(1);
+                        });
+                    all_processed_lines.extend(processed_lines);
+                }
+
+                // check if pagination enabled
+                if arguments.pagination {
+                    paginate_output(all_processed_lines, stdout()).unwrap_or_else(|error| {
+                        eprintln!("Error: paginating = {}", error);
+                        exit(1);
+                    });
+                } else {
+                    for line in all_processed_lines {
+                        println!("{}", line);
+                    }
                 }
             }
         }
@@ -378,6 +385,32 @@ fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Error> {
         }
         writer.write_all(&buffer[..len])?;
     }
+    Ok(())
+}
+
+/// Processing input over the standard output
+fn process_input_stdout<R: Read>(
+    reader: R,
+    features: &mut [Box<dyn LineTextFeature>],
+) -> Result<(), io::Error> {
+    let buf_reader = BufReader::new(reader);
+
+    for line_result in buf_reader.lines() {
+        let line = line_result?;
+        let mut processed_line = Some(line);
+
+        for feature in features.iter_mut() {
+            if let Some(curr_line) = processed_line {
+                processed_line = feature.apply_feature(&curr_line);
+            } else {
+                break;
+            }
+        } // for - applying all the features over the current line
+
+        if let Some(current_line) = processed_line {
+            println!("{}", current_line);
+        }
+    } // for - read each line and apply feature
     Ok(())
 }
 
