@@ -17,6 +17,14 @@ cargo install ricat
 ```
 This command installs the `ricat` binary, making it available for use in your terminal
 
+## Update existing installation
+
+If you have `ricat` already installed, you can update it by force installing the newer version over the older version:
+
+```bash
+cargo install ricat --force
+```
+
 ## Features
 
 - **Modular Design**: Easily extended with new line-based text processing features.

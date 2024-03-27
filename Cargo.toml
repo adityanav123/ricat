@@ -1,6 +1,6 @@
 [package]
 name = "ricat"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 authors = ["Aditya Navphule <adityanav@duck.com>"]
 description = "A Rust-Based implemenation of classic UNIX `cat` command"
