@@ -33,6 +33,7 @@
 //! Adding a new feature to `ricat` is as simple as implementing the `LineTextFeature` for any struct. This modular approach encourages experimentation and customization.
 //!
 //! For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
+mod encoding_decoding_feature;
 
 use clap::Parser;
 use crossterm::{
@@ -47,6 +48,9 @@ use std::{
     io::{self, stdin, stdout, BufRead, BufReader, Error, Read, Write},
     process::exit,
 };
+
+// Encoding-Decoding Module
+use encoding_decoding_feature::{Base64, DataEncoding as _};
 
 /// get current user terminal height for pagination
 fn get_terminal_height() -> u16 {
@@ -169,21 +173,33 @@ impl LineTextFeature for LineWithGivenText {
     }
 }
 
-/// DataEncoding Trait : for Encoding and Decoding Files
-trait DataEncoding {
-    fn encode(&self, data: &[u8]) -> String;
-    fn decode(&self, text: &str) -> Result<Vec<u8>, String>;
+/// Base64 Encoding Feature Integration
+struct Base64Encoding;
+
+impl Base64Encoding {
+    fn new() -> Self {
+        Self
+    }
 }
 
-/// Encoding Feature: Base64 Encoding
-struct Base64Encoding;
-impl DataEncoding for Base64Encoding {
-    fn encode(&self, _data: &[u8]) -> String {
-        todo!("have to check documentation");
+impl LineTextFeature for Base64Encoding {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        Base64::encode(line)
     }
+}
 
-    fn decode(&self, _text: &str) -> Result<Vec<u8>, String> {
-        todo!("have to check documentation");
+/// Base64 Decoding Feature Integration
+struct Base64Decoding;
+
+impl Base64Decoding {
+    fn new() -> Self {
+        Self
+    }
+}
+
+impl LineTextFeature for Base64Decoding {
+    fn apply_feature(&mut self, line: &str) -> Option<String> {
+        Base64::decode(line)
     }
 }
 
@@ -219,6 +235,12 @@ struct Cli {
 
     #[clap(long = "pages", help = "apply pagination to the output")]
     pagination: bool,
+
+    #[clap(long = "eb64", help = "encode the input text using Base64")]
+    encode: bool,
+
+    #[clap(long = "db64", help = "decode the input text using Base64")]
+    decode: bool,
 
     /// Optional file path to read from instead of standard input.
     #[clap(help = "File(s) you want to read, multiple files will be appended one after another")]
@@ -370,6 +392,14 @@ fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFe
 
     if arguments.tabs {
         features.push(Box::new(ReplaceTabspaces::new()));
+    }
+
+    if arguments.encode {
+        features.push(Box::new(Base64Encoding::new()));
+    }
+
+    if arguments.decode {
+        features.push(Box::new(Base64Decoding::new()));
     }
 }
 

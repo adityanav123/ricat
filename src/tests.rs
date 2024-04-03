@@ -150,4 +150,32 @@ mod tests {
         assert_eq!(line_with_number, Some("This is line 42".to_string()));
         assert!(line_without_number.is_none());
     }
+
+    #[test]
+    fn test_encode() {
+        let text = "Hello, world!";
+        let encoded = Base64::encode(text);
+        assert_eq!(encoded, Some("SGVsbG8sIHdvcmxkIQ==".to_string()));
+    }
+
+    #[test]
+    fn test_decode() {
+        let encoded = "SGVsbG8sIHdvcmxkIQ==";
+        let decoded = Base64::decode(encoded);
+        assert_eq!(decoded, Some("Hello, world!".to_string()));
+    }
+
+    #[test]
+    fn test_encode_empty_string() {
+        let text = "";
+        let encoded = Base64::encode(text);
+        assert_eq!(encoded, Some("".to_string()));
+    }
+
+    #[test]
+    fn test_decode_invalid_base64() {
+        let encoded = "InvalidBase64==";
+        let decoded = Base64::decode(encoded);
+        assert!(decoded.is_none());
+    }
 }
