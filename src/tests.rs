@@ -99,7 +99,6 @@ mod tests {
 
     #[test]
     fn search_regex_special_characters() {
-        // Escaping is handled within the new function, users don't need to escape in the pattern.
         let mut feature = LineWithGivenText::new("\\[aditya\\]");
         assert_eq!(
             feature.apply_feature("Line with [aditya]"),
