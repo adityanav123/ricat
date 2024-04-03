@@ -87,6 +87,23 @@ df | ricat --search --text "/dev/nvme0"
 ```
 This command will show the disk space usage for all the partitions of drive nvme0
 
+### Base64 Encoding-Decoding
+
+```bash
+ricat --encode-base64 message.txt
+```
+This will convert all the contents of message.txt via `base-64 encoding`
+
+```bash
+ricat --decode-base64 encoded_message.txt
+```
+This command will convert the contents of encoded_message.txt via `base-64 decoding`
+
+```bash
+echo -n "And" | base64 | ricat --decode-base64
+```
+Example of encoding and then decoding the string "And" 
+
 ### Show all features currently implemented for `ricat`
 
 ```bash
@@ -105,18 +122,21 @@ Adding new features to `ricat` is straightforward. Implement the `LineTextFeatur
 
 [ ] Stand-in replacement for cat (if possible).
 
-[ ] Feature: Adding Encoding and Decoding ability (Eg. base64) [In Process]
+[x] Feature: Adding Encoding and Decoding ability (`base64`)
 
 
 ## Contributing
 
-Contributions are welcome! If you have ideas for new features or improvements, please feel free to submit a pull request or open an issue.
+Contributions are most welcome! If you have ideas for new features or improvements, please feel free to submit a pull request or open an issue.
 
 ## Bug Reporting
 
 To report bugs, you can go to the [GitHub Discussions](https://github.com/adityanav123/ricat/discussions/11#discussion-6424900)
 
 ## Release Notes
+
+### 0.3.5
+- Added Ability to encode and decode in base64 format [ `--encode-base64` & `--decode-base64` flags]
 
 ### 0.3.3
 - Bug Fixes: `ricat` without any file input was not applying feature on standard input mode.
