@@ -7,6 +7,7 @@ pub trait DataEncoding {
     fn decode(text: &str) -> Option<String>;
 }
 
+/// Base64 Encoding-Decoding
 pub struct Base64;
 
 impl DataEncoding for Base64 {

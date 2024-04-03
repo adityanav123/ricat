@@ -206,7 +206,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.3.4",
+    version = "0.3.5",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -233,13 +233,13 @@ struct Cli {
     )]
     search_text: Option<String>,
 
-    #[clap(long = "pages", help = "apply pagination to the output")]
+    #[clap(long = "pages", action = clap::ArgAction::SetTrue, help = "Apply Pagination to the output")]
     pagination: bool,
 
-    #[clap(long = "eb64", help = "encode the input text using Base64")]
+    #[clap(long = "encode-base64", action = clap::ArgAction::SetTrue, help = "Encode the input text using Base64")]
     encode: bool,
 
-    #[clap(long = "db64", help = "decode the input text using Base64")]
+    #[clap(long = "decode-base64", action = clap::ArgAction::SetTrue, help = "Decode the input text using Base64")]
     decode: bool,
 
     /// Optional file path to read from instead of standard input.
@@ -249,9 +249,7 @@ struct Cli {
 
 fn main() {
     let arguments = Cli::parse();
-    let mut features: Vec<Box<dyn LineTextFeature>> = Vec::new(); // any implemented feature
-
-    add_features_from_args(&arguments, &mut features);
+    let mut features = add_features_from_args(&arguments); // stores the implemented features
 
     // Determine the input source based on command line arguments
     match (arguments.files.is_empty(), features.is_empty()) {
@@ -369,9 +367,18 @@ fn main() {
 }
 
 /// Will Add Features based on arguments passed
-fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFeature>>) {
+fn add_features_from_args(arguments: &Cli) -> Vec<Box<dyn LineTextFeature>> {
+    let mut features = Vec::<Box<dyn LineTextFeature>>::new();
     if arguments.squeeze_blank {
         features.push(Box::new(CompressEmptyLines::new()));
+    }
+
+    if arguments.encode {
+        features.push(Box::new(Base64Encoding::new()));
+    }
+
+    if arguments.decode {
+        features.push(Box::new(Base64Decoding::new()));
     }
 
     if arguments.search_flag {
@@ -394,16 +401,11 @@ fn add_features_from_args(arguments: &Cli, features: &mut Vec<Box<dyn LineTextFe
         features.push(Box::new(ReplaceTabspaces::new()));
     }
 
-    if arguments.encode {
-        features.push(Box::new(Base64Encoding::new()));
-    }
-
-    if arguments.decode {
-        features.push(Box::new(Base64Decoding::new()));
-    }
+    features
 }
 
 /// Copies data from the reader to the writer without modification.
+// Less System Calls: the number of read and write system calls is reduced
 fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Error> {
     // buffer to hold chunks of the file
     let mut buffer = [0_u8; 1024];
@@ -492,7 +494,7 @@ fn wait_for_user_input<W: Write>(writer: &mut W) -> io::Result<()> {
     write!(writer, "--More--(press any key)")?;
     writer.flush()?;
 
-    // Enter raw mode to read key presses without echoing them.
+    // raw mode: read key presses without echoing them.
     crossterm::terminal::enable_raw_mode()?;
 
     loop {
@@ -506,8 +508,7 @@ fn wait_for_user_input<W: Write>(writer: &mut W) -> io::Result<()> {
     crossterm::terminal::disable_raw_mode()?;
     execute!(writer, Show)?; // Show the cursor again.
 
-    // Clear the "--More--" line.
-    execute!(writer, Clear(ClearType::CurrentLine))?;
+    execute!(writer, Clear(ClearType::CurrentLine))?; // Clear the "--More--" line.
     write!(writer, "\r")?; // Move cursor to the beginning of the line
 
     Ok(())
