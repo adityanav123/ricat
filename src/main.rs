@@ -8,10 +8,19 @@
 //!
 //! - **Modular Design**: Easy to extend with new line-based text processing features.
 //! - **Trait-Based Feature Implementation**: Implement the `LineTextFeature` trait to create new features.
+//! - **Line Numbering**: Display line numbers for each line of the input.
+//! - **Dollar Symbol at End**: Append a `$` symbol at the end of each line.
+//! - **Replace Tab Spaces**: Replace tab spaces in the text with `^I`.
+//! - **Compress Empty Lines**: Compress multiple consecutive empty lines into a single empty line.
+//! - **Search Text**: Search for lines containing a specific text or regular expression pattern.
+//! - **Base64 Encoding**: Encode the input text using Base64.
+//! - **Base64 Decoding**: Decode Base64 encoded text.
+//! - **Case-Insensitive Search**: Perform case-insensitive search for lines containing a specific text.
+//! - **Pagination**: Display the output in a paginated manner, allowing user to navigate through pages.
 //!
 //! ## Usage
 //!
-//! Basic usage involves reading files directly or applying the line numbering feature. `ricat` can be used as follows:
+//! `ricat` supports various command-line options to enable different features and customize the output. Here are some common usage examples:
 //!
 //! ### Read a File Without Line Numbering
 //! ```bash
@@ -23,16 +32,75 @@
 //! ricat -n my_file.txt
 //! ```
 //!
-//! ### Read a file with `$` at end of each line
+//! ### Read a File with `$` at End of Each Line
 //! ```bash
 //! ricat -d my_file.txt
 //! ```
 //!
+//! ### Replace Tab Spaces with `^I`
+//! ```bash
+//! ricat -t my_file.txt
+//! ```
+//!
+//! ### Compress Empty Lines
+//! ```bash
+//! ricat -s my_file.txt
+//! ```
+//!
+//! ### Search for Lines Containing a Specific Text
+//! ```bash
+//! ricat --search --text "search_text" my_file.txt
+//! ```
+//!
+//! ### Perform Case-Insensitive Search
+//! ```bash
+//! ricat --search --text "search_text" -i my_file.txt
+//! ```
+//!
+//! ### Encode Input Text Using Base64
+//! ```bash
+//! ricat --encode-base64 my_file.txt
+//! ```
+//!
+//! ### Decode Base64 Encoded Text
+//! ```bash
+//! ricat --decode-base64 my_encoded_file.txt
+//! ```
+//!
+//! ### Enable Pagination
+//! ```bash
+//! ricat --pages my_large_file.txt
+//! ```
+//!
 //! ## Extending ricat
 //!
-//! Adding a new feature to `ricat` is as simple as implementing the `LineTextFeature` for any struct. This modular approach encourages experimentation and customization.
+//! Adding a new feature to `ricat` is as simple as implementing the `LineTextFeature` trait for any struct. This modular approach encourages experimentation and customization.
 //!
 //! For example, to add a feature that highlights TODO comments in your text files, define a struct implementing `LineTextFeature` that scans each line for the pattern and applies the desired formatting.
+//!
+//! ## Testing
+//!
+//! `ricat` includes a comprehensive test suite to ensure the correctness and reliability of its functionality. The tests cover various scenarios and edge cases, including:
+//!
+//! - Basic functionality of each feature
+//! - Interaction between multiple features
+//! - Handling of empty input
+//! - Proper resetting of state between input sources
+//! - Encoding and decoding of text using Base64
+//! - Case-insensitive search functionality
+//!
+//! To run the tests, use the `cargo test` command.
+//!
+//! ## Contributing
+//!
+//! Contributions to `ricat` are welcome! If you have an idea for a new feature or improvement, please open an issue or submit a pull request on the project's GitHub repository.
+//!
+//! When contributing, please ensure that your changes are well-tested and adhere to the project's coding style and conventions.
+//!
+//! ## License
+//!
+//! `ricat` is open-source software licensed under the [MIT License](https://opensource.org/licenses/MIT).mod encoding_decoding_feature;
+
 mod encoding_decoding_feature;
 
 use clap::Parser;
@@ -148,13 +216,25 @@ struct LineWithGivenText {
 }
 
 impl LineWithGivenText {
-    fn new(text: &str) -> Self {
+    fn new(text: &str, ignore_case: bool) -> Self {
         // Attempt to compile the text as a regular expression.
         // If it fails, escape special characters and compile it as plain text.
-        let regex = Regex::new(text).unwrap_or_else(|_| {
-            let escaped_text = escape(text);
-            Regex::new(&escaped_text).unwrap()
-        });
+        let regex = if ignore_case {
+            Regex::new(&format!("(?i){}", text)).unwrap_or_else(|_| {
+                let escaped_text = escape(text);
+                Regex::new(&format!("(?i){}", escaped_text)).unwrap()
+            })
+        } else {
+            Regex::new(text).unwrap_or_else(|_| {
+                let escaped_text = escape(text);
+                Regex::new(&escaped_text).unwrap()
+            })
+        };
+
+        // let regex = Regex::new(text).unwrap_or_else(|_| {
+        //     let escaped_text = escape(text);
+        //     Regex::new(&escaped_text).unwrap()
+        // });
 
         Self {
             search_regex: regex,
@@ -206,7 +286,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.3.5",
+    version = "0.3.6",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -232,6 +312,14 @@ struct Cli {
         help = "search text: only considered when --search flag is used."
     )]
     search_text: Option<String>,
+
+    #[clap(
+        short = 'i',
+        long,
+        help = "ignore case for searching text: only considered when --search flag is used.",
+        action=clap::ArgAction::SetTrue,
+    )]
+    ignore_case: bool,
 
     #[clap(long = "pages", action = clap::ArgAction::SetTrue, help = "Apply Pagination to the output")]
     pagination: bool,
@@ -386,7 +474,10 @@ fn add_features_from_args(arguments: &Cli) -> Vec<Box<dyn LineTextFeature>> {
             None => "",
             Some(text) => text,
         };
-        features.push(Box::new(LineWithGivenText::new(text_to_search.trim())));
+        features.push(Box::new(LineWithGivenText::new(
+            text_to_search.trim(),
+            arguments.ignore_case,
+        )));
     }
 
     if arguments.numbers {
