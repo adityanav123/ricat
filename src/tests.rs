@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn search_plain_text_found() {
-        let mut feature = LineWithGivenText::new("aditya");
+        let mut feature = LineWithGivenText::new("aditya", false);
         assert_eq!(
             feature.apply_feature("This is a line with aditya in it."),
             Some("This is a line with aditya in it.".to_string())
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn search_plain_text_not_found() {
-        let mut feature = LineWithGivenText::new("nonexistent");
+        let mut feature = LineWithGivenText::new("nonexistent", false);
         assert!(feature
             .apply_feature("This line does not contain the search text.")
             .is_none());
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn search_regex_single_digit_found() {
-        let mut feature = LineWithGivenText::new("\\d");
+        let mut feature = LineWithGivenText::new("\\d", false);
         assert_eq!(
             feature.apply_feature("This line has a 1 digit."),
             Some("This line has a 1 digit.".to_string())
@@ -84,13 +84,13 @@ mod tests {
 
     #[test]
     fn search_regex_single_digit_not_found() {
-        let mut feature = LineWithGivenText::new("\\d");
+        let mut feature = LineWithGivenText::new("\\d", false);
         assert!(feature.apply_feature("No digits here.").is_none());
     }
 
     #[test]
     fn search_regex_exact_string() {
-        let mut feature = LineWithGivenText::new("aditya");
+        let mut feature = LineWithGivenText::new("aditya", false);
         assert_eq!(
             feature.apply_feature("Exact match aditya"),
             Some("Exact match aditya".to_string())
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn search_regex_special_characters() {
-        let mut feature = LineWithGivenText::new("\\[aditya\\]");
+        let mut feature = LineWithGivenText::new("\\[aditya\\]", false);
         assert_eq!(
             feature.apply_feature("Line with [aditya]"),
             Some("Line with [aditya]".to_string())
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn search_feature_with_regex() {
-        let mut feature = LineWithGivenText::new(r"\d+"); // Matches any digit
+        let mut feature = LineWithGivenText::new(r"\d+", false); // Matches any digit
         let line_with_number = feature.apply_feature("This is line 42");
         let line_without_number = feature.apply_feature("This line has no numbers");
 
@@ -177,5 +177,34 @@ mod tests {
         let encoded = "InvalidBase64==";
         let decoded = Base64::decode(encoded);
         assert!(decoded.is_none());
+    }
+
+    #[test]
+    fn search_case_insensitive_basic() {
+        // Test basic case-insensitive search functionality
+        let mut feature = LineWithGivenText::new("aditya", true);
+        assert_eq!(
+            feature.apply_feature("This line contains ADITYA."),
+            Some("This line contains ADITYA.".to_string())
+        );
+    }
+
+    #[test]
+    fn search_case_insensitive_mixed_case() {
+        // Test case-insensitive search with mixed-case text
+        let mut feature = LineWithGivenText::new("OpenSource", true);
+        assert_eq!(
+            feature.apply_feature("I love opensource projects."),
+            Some("I love opensource projects.".to_string())
+        );
+    }
+
+    #[test]
+    fn search_case_insensitive_not_found() {
+        // Test case-sensitive search when the search text is present
+        let mut feature = LineWithGivenText::new("Rust", false);
+        assert!(feature
+            .apply_feature("I enjoy programming in rust.")
+            .is_none());
     }
 }

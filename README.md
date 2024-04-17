@@ -27,8 +27,19 @@ cargo install ricat --force
 
 ## Features
 
-- **Modular Design**: Easily extended with new line-based text processing features.
-- **Trait-Based Feature Implementation**: New features can be added by implementing the `LineTextFeature` trait.
+- **Line Numbering**: Add line numbers to the output with the `-n` flag.
+- **Dollar Sign Appending**: Append a `$` sign at the end of each line using the `-d` flag.
+- **Tab Space Replacement**: Replace tab spaces with `^I` using the `-t` flag.
+- **Empty Line Compression**: Compress multiple consecutive empty lines into a single empty line with the `-s` flag.
+- **Text Search**: Search for lines containing a specific text or regular expression pattern using the `--search` and `--text` flags.
+  - Case-insensitive search is supported with the `--ignore-case` or `-i` flag.
+- **Base64 Encoding**: Encode the input text using Base64 with the `--encode-base64` flag.
+- **Base64 Decoding**: Decode Base64 encoded text using the `--decode-base64` flag.
+- **Multiple File Support**: Concatenate and process multiple files specified as command-line arguments.
+- **Standard Input Processing**: Read from standard input when no file arguments are provided, allowing `ricat` to be used in command pipelines.
+- **Pagination**: Display the output in a paginated manner based on the terminal window size using the `--pages` flag.
+
+These features make `ricat` a versatile tool for text processing and manipulation, providing a range of functionalities to enhance your command-line workflows.
 
 ## Usage
 
@@ -60,6 +71,8 @@ ricat file1.txt file2.txt file3.txt
 
 ### Search Text within a File
 
+For searching text within a file, use the `--search` flag, along with the `--text` flag to specify the text to search for.
+
 To search for and return lines containing a specific pattern or word within a single file:
 
 ```bash
@@ -70,6 +83,12 @@ For regular expression searches, ensure the pattern is a valid regex. For exampl
 
 ```bash
 ricat --search --text "\d+" my_file.txt
+```
+
+For ignoring case sensitivity, use the `--ignore-case` or `-i` flag:
+
+```bash
+ricat --search --text "string_to_search" --ignore-case my_file.txt
 ```
 
 ### Read from the Standard Input by User
@@ -120,10 +139,9 @@ Adding new features to `ricat` is straightforward. Implement the `LineTextFeatur
 
 [x] Return all the lines with a given pattern/word.
 
-[ ] Stand-in replacement for cat (if possible).
-
 [x] Feature: Adding Encoding and Decoding ability (`base64`)
 
+[ ] Stand-in replacement for cat.
 
 ## Contributing
 
@@ -134,6 +152,9 @@ Contributions are most welcome! If you have ideas for new features or improvemen
 To report bugs, you can go to the [GitHub Discussions](https://github.com/adityanav123/ricat/discussions/11#discussion-6424900)
 
 ## Release Notes
+
+### 0.3.6
+- Added Ability to search text/regular expression in the file with `--ignore-case` flag.
 
 ### 0.3.5
 - Added Ability to encode and decode in base64 format [ `--encode-base64` & `--decode-base64` flags]
