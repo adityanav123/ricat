@@ -1,12 +1,13 @@
 [package]
 name = "ricat"
-version = "0.3.6"
+version = "0.3.7"
 edition = "2021"
 authors = ["Aditya Navphule <adityanav@duck.com>"]
 description = "A Rust-Based implemenation of classic UNIX `cat` command"
 repository = "https://github.com/adityanav123/ricat"
 license = "MIT"
 keywords = ["cat", "cli", "text-processing", "file", "system-tools"]
+documentation = "https://adityanav123.github.io/ricat"
 
 [[bin]]
 name = "ricat"
