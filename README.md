@@ -33,6 +33,7 @@ cargo install ricat --force
 - **Empty Line Compression**: Compress multiple consecutive empty lines into a single empty line with the `-s` flag.
 - **Text Search**: Search for lines containing a specific text or regular expression pattern using the `--search` and `--text` flags.
   - Case-insensitive search is supported with the `--ignore-case` or `-i` flag.
+  - For Regular Expression search, append the regex with `reg:`. For example, `ricat --search --text "reg:\\d+" my_file.txt`
 - **Base64 Encoding**: Encode the input text using Base64 with the `--encode-base64` flag.
 - **Base64 Decoding**: Decode Base64 encoded text using the `--decode-base64` flag.
 - **Multiple File Support**: Concatenate and process multiple files specified as command-line arguments.
@@ -82,7 +83,7 @@ ricat --search --text "string_to_search" my_file.txt
 For regular expression searches, ensure the pattern is a valid regex. For example, to find lines containing digits:
 
 ```bash
-ricat --search --text "\d+" my_file.txt
+ricat --search --text "reg:\d+" my_file.txt
 ```
 
 For ignoring case sensitivity, use the `--ignore-case` or `-i` flag:
@@ -141,6 +142,8 @@ Adding new features to `ricat` is straightforward. Implement the `LineTextFeatur
 
 [x] Feature: Adding Encoding and Decoding ability (`base64`)
 
+[ ] Non-UTF8 Support: To be Done. See Issue [#18](https://github.com/adityanav123/ricat/issues/18)
+
 [ ] Stand-in replacement for cat.
 
 ## Contributing
@@ -153,13 +156,16 @@ To report bugs, you can go to the [GitHub Discussions](https://github.com/aditya
 
 ## Release Notes
 
-### 0.3.6
+### 0.4.0
+- Updated searching using Regex, now you can search for a regular expression pattern in the file via using `reg:` prefix.
+- Optimised Performance for features, using Buffered Writer for output, makes less System Calls for writing to the output.
+- Optimised Regex Searching via Caching the Compiled Regex, earlier was compiling for each search.
+- Code Refactored for easier understanding and maintainability.
+- Bug Fixes: Fixed issue with regex search.
+
+### 0.3.3 to 0.3.6
 - Added Ability to search text/regular expression in the file with `--ignore-case` flag.
-
-### 0.3.5
 - Added Ability to encode and decode in base64 format [ `--encode-base64` & `--decode-base64` flags]
-
-### 0.3.3
 - Bug Fixes: `ricat` without any file input was not applying feature on standard input mode.
 
 ### 0.3.2
