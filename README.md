@@ -129,7 +129,14 @@ Example of encoding and then decoding the string "And"
 ```bash
 ricat --help
 ```
+## Testing `ricat`
 
+To test the `ricat` features, you can run the following command:
+
+```bash
+./test-ricat.sh
+```
+Run this command in the root of the project
 
 ## Extending ricat
 
@@ -155,6 +162,12 @@ Contributions are most welcome! If you have ideas for new features or improvemen
 To report bugs, you can go to the [GitHub Discussions](https://github.com/adityanav123/ricat/discussions/11#discussion-6424900)
 
 ## Release Notes
+
+### 0.4.1
+- Added custom testing file for testing the `ricat` features.
+- Fixed Bug with `ricat` not working with the standard input mode: [#21](https://github.com/adityanav123/ricat/issues/21)
+
+    -- To run the test cases, run ./test-ricat.sh in the root directory of the project.
 
 ### 0.4.0
 - Updated searching using Regex, now you can search for a regular expression pattern in the file via using `reg:` prefix.

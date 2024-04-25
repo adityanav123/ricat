@@ -311,7 +311,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.4.0",
+    version = "0.4.1",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -397,15 +397,17 @@ fn handle_via_std_output(_arguments: &Cli) -> Result<(), RicatError> {
     Ok(())
 }
 
-/// handle files or features
+/// handle files or features : features are enabled, files can/cannot be passed
 fn handle_files_or_features(
     arguments: &Cli,
     features: &mut [Box<dyn LineTextFeature>],
 ) -> Result<(), RicatError> {
-    let reader_sources: Result<Vec<Box<dyn Read>>, RicatError> = if arguments.files.is_empty() {
-        Ok(vec![Box::new(stdin())])
+    if arguments.files.is_empty() {
+        process_input_stdout(stdin(), features, false).map_err(|error| {
+            RicatError::LineProcessingError(format!("Error processing line: {}", error))
+        })?;
     } else {
-        arguments
+        let reader_sources: Result<Vec<Box<dyn Read>>, RicatError> = arguments
             .files
             .iter()
             .map(|file_path| {
@@ -418,17 +420,10 @@ fn handle_files_or_features(
                         ))
                     })
             })
-            .collect()
-    };
+            .collect();
 
-    // unwrap file_readers
-    let reader_sources = reader_sources?;
+        let reader_sources = reader_sources?;
 
-    if arguments.files.is_empty() {
-        process_input_stdout(Box::new(stdin()), features).map_err(|error| {
-            RicatError::LineProcessingError(format!("Error processing line: {}", error))
-        })?;
-    } else {
         let mut all_processed_lines = Vec::<String>::new();
 
         for source in reader_sources {
@@ -444,9 +439,7 @@ fn handle_files_or_features(
             })?;
         } else {
             let stdout = stdout();
-            // buffered writer: less no. of system calls, escpecially while writing large files
             let mut buf_writer = BufWriter::new(stdout.lock());
-            // let mut std_writer = stdout.lock();
 
             for line in all_processed_lines {
                 writeln!(buf_writer, "{}", line).map_err(|error| {
@@ -454,7 +447,6 @@ fn handle_files_or_features(
                 })?;
             }
 
-            // ensure that any buffered data is written to the underlying standard output.
             buf_writer.flush().map_err(|error| {
                 RicatError::OutputFlushError(format!("Error flushing output: {}", error))
             })?;
@@ -552,15 +544,21 @@ pub fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Ricat
     Ok(())
 }
 
-/// Processing input over the standard output
+/// Processing input and flushing to standard output
 pub fn process_input_stdout<R: Read>(
     reader: R,
     features: &mut [Box<dyn LineTextFeature>],
+    is_live: bool,
 ) -> Result<(), RicatError> {
     let buf_reader = BufReader::new(reader);
-
     let stdout = stdout();
-    let mut buf_writer = BufWriter::new(stdout.lock());
+    let stdout_lock = stdout.lock();
+
+    let mut writer: Box<dyn Write> = if is_live {
+        Box::new(BufWriter::new(stdout_lock))
+    } else {
+        Box::new(stdout_lock)
+    };
 
     for line_result in buf_reader.lines() {
         let line = line_result?;
@@ -574,21 +572,19 @@ pub fn process_input_stdout<R: Read>(
             }
         }
 
-        if let Some(current_line) = processed_line {
-            writeln!(buf_writer, "{}", current_line).map_err(|error| {
+        if let Some(curr_line) = processed_line {
+            writeln!(writer, "{}", curr_line).map_err(|error| {
                 RicatError::LineProcessingError(format!("Error writing line: {}", error))
             })?;
         }
     }
 
-    buf_writer.flush().map_err(|error| {
+    writer.flush().map_err(|error| {
         RicatError::OutputFlushError(format!("Error flushing output: {}", error))
     })?;
 
     Ok(())
-}
-
-/// Processes input by applying each configured text feature to every line.
+}/// Processes input by applying each configured text feature to every line.
 pub fn process_input_ret<R: Read>(
     reader: R,
     features: &mut [Box<dyn LineTextFeature>],
