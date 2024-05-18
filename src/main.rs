@@ -119,11 +119,10 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
 };
 use errors::RicatError;
+use memmap2::Mmap;
 use regex::Regex;
 use std::{
-    fs::File,
-    io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write},
-    process,
+    fs::File, io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write}, process
 };
 
 
@@ -476,10 +475,12 @@ fn handle_files_without_features(arguments: &Cli) -> Result<(), RicatError> {
     } else {
         // Directly copy files to standard output
         for file_path in &arguments.files {
-            let file = File::open(file_path).map_err(|error| {
+            /*let file = File::open(file_path).map_err(|error| {
                 RicatError::FileOpenError(format!("Error opening file {}: {}", file_path, error))
             })?;
             copy(BufReader::new(file), stdout()).map_err(|error| error)?;
+              */
+            copy_mmap(file_path, stdout()).map_err(|error| error)?;
         }
     }
 
@@ -541,6 +542,25 @@ pub fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Ricat
         }
         writer.write_all(&buffer[..len])?;
     }
+    Ok(())
+}
+
+/*In Memory Copy: Via Memory Mapped IO */
+// TODO: Read and implement it.
+pub fn copy_mmap<W:Write>(file_path: &str, mut writer: W) -> Result<(), RicatError> {
+    println!("Copying via Memory Mapped IO");
+    let file = File::open(file_path).map_err(|error| {
+        RicatError::FileOpenError(format!("Error opening file {}: {}", file_path, error))
+    })?;
+
+    let mmap = unsafe { Mmap::map(&file) }.map_err(|error| {
+        RicatError::MemoryMapError(format!("Error mapping file to memory: {}", error))
+    })?;
+
+    writer.write_all(&mmap).map_err(|error| {
+        RicatError::MemoryMapWriteError(format!("Error writing to output: {}", error))
+    })?;
+
     Ok(())
 }
 
