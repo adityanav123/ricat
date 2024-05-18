@@ -129,6 +129,26 @@ Example of encoding and then decoding the string "And"
 ```bash
 ricat --help
 ```
+
+## Benchmarking
+
+`ricat` provides benchmark scripts to compare its performance with the standard cat and a previous version of `ricat` already installed.
+
+- `benchmark.sh`: Compares the execution time of `current:ricat`, `cat` and `prev:ricat` for a single run with a specified memory size (default: 1GB).
+
+```bash
+./benchmark.sh
+```
+
+- `benchmark_plot.sh`: Averages the execution time over multiple iterations (default: 10) and plots a comparision graph.
+
+```bash
+./benchmark_plot.sh <memory_size_in_MB>
+```
+Eg. `./benchmark_plot.sh 4096`
+
+These benchmarks scripts utilise memory-mapped I/O for improved performance when reading large files without applying any features.
+
 ## Testing `ricat`
 
 To test the `ricat` features, you can run the following command:
@@ -163,6 +183,10 @@ To report bugs, you can go to the [GitHub Discussions](https://github.com/aditya
 
 ## Release Notes
 
+### 0.4.2
+- Added support for Memory Mapped IO, improves performance times by almost 150% for reading files directly without any features applied.
+- Added benchmarks for memory mapped IO addition.
+
 ### 0.4.1
 - Added custom testing file for testing the `ricat` features.
 - Fixed Bug with `ricat` not working with the standard input mode: [#21](https://github.com/adityanav123/ricat/issues/21)
@@ -171,8 +195,8 @@ To report bugs, you can go to the [GitHub Discussions](https://github.com/aditya
 
 ### 0.4.0
 - Updated searching using Regex, now you can search for a regular expression pattern in the file via using `reg:` prefix.
-- Optimised Performance for features, using Buffered Writer for output, makes less System Calls for writing to the output.
-- Optimised Regex Searching via Caching the Compiled Regex, earlier was compiling for each search.
+- Optimized Performance for features, using Buffered Writer for output, makes less System Calls for writing to the output.
+- Optimized Regex Searching via Caching the Compiled Regex, earlier was compiling for each search.
 - Code Refactored for easier understanding and maintainability.
 - Bug Fixes: Fixed issue with regex search.
 

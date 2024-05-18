@@ -115,4 +115,18 @@ pub enum RicatError {
     /// It includes a string message providing more details about the error.
     #[error("Error acquiring lock on regex cache: {0}")]
     RegexCacheError(String),
+
+    /// Represents an error that occurs when failed to create memory map from file
+    ///
+    /// This error variant is used when there is an error while creating memory map from file
+    /// It includes a string message providing more details about the error.
+    #[error("Error writing data to writer via Memory Mapped IO: {0}")]
+    MemoryMapError(String),
+
+    /// Represents an error when writing contents of memory map to writer
+    ///
+    /// This error variant is used when there is an error while writing contents of memory map to writer
+    /// It includes a string message providing more details about the error.
+    #[error("Error writing data to writer via Memory Mapped IO: {0}")]
+    MemoryMapWriteError(String),
 }
