@@ -310,7 +310,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.4.1",
+    version = "0.4.2",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
