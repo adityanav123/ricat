@@ -12,9 +12,8 @@ memory_size=$1
 # Number of iterations
 iterations=10
 
-# Create a temporary directory for storing the time values
-mkdir -p ~/Desktop/temp_files
-times_file=~/Desktop/temp_files/times.txt
+# Create a temporary file
+times_file=times.txt
 
 # Initialize the times file
 echo "Iteration,Your Code (ricat),cat,ricat" > $times_file
@@ -95,3 +94,7 @@ for bar in bars:
 plt.tight_layout()
 plt.show()
 EOF
+
+
+# Remove the temporary file
+rm $times_file
