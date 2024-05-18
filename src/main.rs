@@ -77,6 +77,18 @@
 //! ricat --pages my_large_file.txt
 //! ```
 //!
+//! ## Benchmarks
+//!
+//! Added a benchmarking module to test the performance of the application. The benchmarks covers only the direct file read(without features).
+//! To run the benchmarks, use the following command:
+//! in src/
+//! ```bash
+//! ./benchmark_plot.sh
+//! ```
+//! The script will run the benchmarks and generate a plot using `matplotlib` Be sure to install the required dependencies before running the script.
+//! Dependency: `matplotlib`
+//!
+//!
 //! ## Extending ricat
 //!
 //! Adding a new feature to `ricat` is as simple as implementing the `LineTextFeature` trait for any struct. This modular approach encourages experimentation and customization.
@@ -546,7 +558,8 @@ pub fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Ricat
 }
 
 /*In Memory Copy: Via Memory Mapped IO */
-// TODO: Read and implement it.
+// Memory-mapped I/O (MMIO) is a technique that allows the physical memory of a computer to be accessed using software. Specifically, memory-mapped I/O is used for accessing memory-mapped registers in the I/O space of a computer.
+// Memory-mapped I/O is used to reduce the overhead of accessing the computer's memory by allowing the memory to be accessed directly by the CPU. This can improve the performance of the computer by reducing the number of instructions required to access the memory.
 pub fn copy_mmap<W:Write>(file_path: &str, mut writer: W) -> Result<(), RicatError> {
     println!("Copying via Memory Mapped IO");
     let file = File::open(file_path).map_err(|error| {
