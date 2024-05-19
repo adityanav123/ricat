@@ -84,7 +84,7 @@ ricat --search --text "string_to_search" my_file.txt
 For regular expression searches, ensure the pattern is a valid regex. For example, to find lines containing digits:
 
 ```bash
-ricat --search --text "reg:\d+" my_file.txt
+ricat --search --text "reg:\\d+" my_file.txt
 ```
 
 For ignoring case sensitivity, use the `--ignore-case` or `-i` flag:
