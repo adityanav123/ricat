@@ -1,6 +1,6 @@
 [package]
 name = "ricat"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 authors = ["Aditya Navphule <adityanav@duck.com>"]
 description = "A Rust-Based implemenation of classic UNIX `cat` command"
@@ -8,6 +8,7 @@ repository = "https://github.com/adityanav123/ricat"
 license = "MIT"
 keywords = ["cat", "cli", "text-processing", "file", "system-tools"]
 documentation = "https://adityanav123.github.io/ricat"
+build = "build.rs"
 
 [[bin]]
 name = "ricat"
@@ -21,8 +22,10 @@ base64 = "0.22.0"
 thiserror = "1.0.59"
 criterion = "0.5.1"
 memmap2 = "0.9.4"
+serde = { version = "1.0.202", features = ["derive"] }
+serde_json = "1.0.117"
+toml = "0.8.13"
+dirs = "5.0.1"
 
-# [lib]
-# name = "ricat"
-# path = "src/main.rs"
-# crate-type = ["rlib"]
+[build-dependencies]
+dirs = "5.0.1"

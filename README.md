@@ -39,6 +39,7 @@ cargo install ricat --force
 - **Multiple File Support**: Concatenate and process multiple files specified as command-line arguments.
 - **Standard Input Processing**: Read from standard input when no file arguments are provided, allowing `ricat` to be used in command pipelines.
 - **Pagination**: Display the output in a paginated manner based on the terminal window size using the `--pages` flag.
+- **Presets**: Now Ricat uses ricat_cfg.toml file to store the presets for the features. You can change the presets according to your needs. It is stores in $HOME/.config/ricat/ricat_cfg.toml
 
 These features make `ricat` a versatile tool for text processing and manipulation, providing a range of functionalities to enhance your command-line workflows.
 
@@ -130,6 +131,18 @@ Example of encoding and then decoding the string "And"
 ricat --help
 ```
 
+## Configuration Presets
+Config file for ricat is stored in $HOME/.config/ricat/ricat_cfg.toml. You can change the presets for the features in this file. The file is created when you run the ricat command for the first time.
+
+Defaults: 
+
+```toml
+number_feature = false
+dollar_sign_feature = false
+tabs_feature = false
+compress_empty_line_feature = false
+```    
+
 ## Benchmarking
 
 `ricat` provides benchmark scripts to compare its performance with the standard cat and a previous version of `ricat` already installed.
@@ -182,6 +195,12 @@ Contributions are most welcome! If you have ideas for new features or improvemen
 To report bugs, you can go to the [GitHub Discussions](https://github.com/adityanav123/ricat/discussions/11#discussion-6424900)
 
 ## Release Notes
+
+### 0.4.3
+- Added support for configuration presets for the features in the ricat_cfg.toml file.
+- Added ability to quit pagination mode by pressing `q` key.
+- fixes & improvements.
+- Updated Documentation for the project.
 
 ### 0.4.2
 - Added support for Memory Mapped IO, improves performance times by almost 150% for reading files directly without any features applied.

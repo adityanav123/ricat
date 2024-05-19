@@ -129,4 +129,12 @@ pub enum RicatError {
     /// It includes a string message providing more details about the error.
     #[error("Error writing data to writer via Memory Mapped IO: {0}")]
     MemoryMapWriteError(String),
+
+    /// Represents an Error when reading the config file
+    #[error("Error reading config file: {0}")]
+    ConfigReadError(String),
+
+    /// User Quits the Pagination Mode by pressing 'q'
+    #[error("User Quit Pagination Mode")]
+    UserQuit,
 }
