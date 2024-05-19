@@ -12,17 +12,18 @@
 //! - **Dollar Symbol at End**: Append a `$` symbol at the end of each line.
 //! - **Replace Tab Spaces**: Replace tab spaces in the text with `^I`.
 //! - **Compress Empty Lines**: Compress multiple consecutive empty lines into a single empty line.
-//! - **Search Text**: Search for lines containing a specific text or regular expression pattern. Prefix the search text with 'reg:' to treat it as a regular expression, e.g., 'reg:\\\\d+' to search for digits.
+//! - **Search Text**: Search for lines containing a specific text or regular expression pattern. Prefix the search text with 'reg:' to treat it as a regular expression, e.g., 'reg:\\d+' to search for digits.
 //! - **Case-Insensitive Search**: Perform case-insensitive search for lines containing a specific text.
 //! - **Base64 Encoding**: Encode the input text using Base64.
 //! - **Base64 Decoding**: Decode Base64 encoded text.
 //! - **Pagination**: Display the output in a paginated manner, allowing user to navigate through pages.
+//! - **Configuration File**: Load preset features from a configuration file (`ricat_cfg.toml`) located in the user's configuration directory (`$HOME/.config/ricat`).
 //!
 //! ## Usage
 //!
 //! `ricat` supports various command-line options to enable different features and customize the output. Here are some common usage examples:
 //!
-//! ### Read a File directly 
+//! ### Read a File directly
 //! ```bash
 //! ricat my_file.txt
 //! ```
@@ -77,6 +78,22 @@
 //! ricat --pages my_large_file.txt
 //! ```
 //!
+//! ## Configuration File
+//!
+//! `ricat` supports loading preset features from a configuration file (`ricat_cfg.toml`) located in the user's configuration directory (`$HOME/.config/ricat`). The configuration file is automatically created during the installation process using `cargo install`.
+//!
+//! The configuration file allows users to enable or disable specific features by setting the corresponding fields to `true` or `false`. Here's an example of the `ricat_cfg.toml` file:
+//!
+//! ```toml
+//! number_feature = true
+//! dollar_sign_feature = false
+//! tabs_feature = false
+//! compress_empty_line_feature = false
+//! pagination_feature = false
+//! ```
+//!
+//! When `ricat` is executed, it reads the configuration file and enables the specified features accordingly. This provides a convenient way for users to customize the behavior of `ricat` without having to specify the options every time they run the command.
+//!
 //! ## Benchmarks
 //!
 //! Added a benchmarking module to test the performance of the application. The benchmarks covers only the direct file read(without features).
@@ -105,6 +122,7 @@
 //! - Proper resetting of state between input sources
 //! - Encoding and decoding of text using Base64
 //! - Case-insensitive search functionality
+//! - Loading and applying configuration from the `ricat_cfg.toml` file
 //!
 //! To run the tests, clone the repo and use the `cargo test` command.
 //!
@@ -118,15 +136,15 @@
 //!
 //! `ricat` is open-source software licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-
-
 pub mod encoding_decoding_feature;
 pub mod errors;
+pub mod config;
+mod tests;
 
 use clap::Parser;
 use crossterm::{
     cursor::{Hide, Show},
-    event::{read, Event},
+    event::{read, Event, KeyCode},
     execute,
     terminal::{self, Clear, ClearType},
 };
@@ -136,6 +154,7 @@ use regex::Regex;
 use std::{
     fs::File, io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Write}, process
 };
+use crate::config::load_config;
 
 
 // Encoding-Decoding Module
@@ -322,7 +341,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.4.2",
+    version = "0.4.3",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -390,6 +409,10 @@ fn main() {
 fn run() -> Result<(), RicatError> {
     let arguments = Cli::parse();
     let mut features = add_features_from_args(&arguments); // stores the implemented features
+    // Load the configuration file
+    let configuration = load_config();
+
+    add_features_from_config(&mut features, &configuration);
 
     // Determine the input source based on command line arguments
     match (arguments.files.is_empty(), features.is_empty()) {
@@ -417,6 +440,7 @@ fn handle_files_or_features(
         process_input_stdout(stdin(), features, false).map_err(|error| {
             RicatError::LineProcessingError(format!("Error processing line: {}", error))
         })?;
+        Ok(())
     } else {
         let reader_sources: Result<Vec<Box<dyn Read>>, RicatError> = arguments
             .files
@@ -445,9 +469,16 @@ fn handle_files_or_features(
         }
 
         if arguments.pagination {
-            paginate_output(all_processed_lines, stdout()).map_err(|error| {
-                RicatError::PaginationError(format!("Error paginating: {}", error))
-            })?;
+            match paginate_output(all_processed_lines, stdout()) {
+                Ok(completed) => {
+                    if completed {
+                        Ok(())
+                    } else {
+                        Ok(())
+                    }
+                }
+                Err(error) => Err(RicatError::PaginationError(format!("Error paginating: {}", error))),
+            }
         } else {
             let stdout = stdout();
             let mut buf_writer = BufWriter::new(stdout.lock());
@@ -461,12 +492,10 @@ fn handle_files_or_features(
             buf_writer.flush().map_err(|error| {
                 RicatError::OutputFlushError(format!("Error flushing output: {}", error))
             })?;
+            Ok(())
         }
     }
-
-    Ok(())
 }
-
 /// handle files without features
 fn handle_files_without_features(arguments: &Cli) -> Result<(), RicatError> {
     if arguments.pagination {
@@ -482,23 +511,24 @@ fn handle_files_without_features(arguments: &Cli) -> Result<(), RicatError> {
 
             all_lines.extend(processed_lines);
         }
-        paginate_output(all_lines, stdout())
-            .map_err(|error| RicatError::PaginationError(format!("Error paginating: {}", error)))?;
+        match paginate_output(all_lines, stdout()) {
+            Ok(completed) => {
+                if completed {
+                    Ok(())
+                } else {
+                    Ok(())
+                }
+            }
+            Err(error) => Err(RicatError::PaginationError(format!("Error paginating: {}", error))),
+        }
     } else {
         // Directly copy files to standard output
         for file_path in &arguments.files {
-            /*let file = File::open(file_path).map_err(|error| {
-                RicatError::FileOpenError(format!("Error opening file {}: {}", file_path, error))
-            })?;
-            copy(BufReader::new(file), stdout()).map_err(|error| error)?;
-              */
             copy_mmap(file_path, stdout()).map_err(|error| error)?;
         }
+        Ok(())
     }
-
-    Ok(())
 }
-
 /// Generate Feature Vector: Will Add Features based on arguments passed
 fn add_features_from_args(arguments: &Cli) -> Vec<Box<dyn LineTextFeature>> {
     let mut features = Vec::<Box<dyn LineTextFeature>>::new();
@@ -540,6 +570,27 @@ fn add_features_from_args(arguments: &Cli) -> Vec<Box<dyn LineTextFeature>> {
     features
 }
 
+/// Add features from configuration file
+fn add_features_from_config(features: &mut Vec<Box<dyn LineTextFeature>>, config: &config::RicatConfig) {
+    //println!("Config: {:#?}", config);
+    if config.number_feature {
+        features.push(Box::new(LineNumbering::new()));
+    }
+
+    if config.dollar_sign_feature {
+        features.push(Box::new(DollarSymbolAtLast::new()));
+    }
+
+    if config.tabs_feature {
+        features.push(Box::new(ReplaceTabspaces::new()));
+    }
+
+    if config.compress_empty_line_feature {
+        features.push(Box::new(CompressEmptyLines::new()));
+    }
+}
+
+
 /// Copies data from the reader to the writer without modification.
 /* Less System Calls: the number of read and write system calls is reduced */
 pub fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), RicatError> {
@@ -560,8 +611,8 @@ pub fn copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<(), Ricat
 /*In Memory Copy: Via Memory Mapped IO */
 // Memory-mapped I/O (MMIO) is a technique that allows the physical memory of a computer to be accessed using software. Specifically, memory-mapped I/O is used for accessing memory-mapped registers in the I/O space of a computer.
 // Memory-mapped I/O is used to reduce the overhead of accessing the computer's memory by allowing the memory to be accessed directly by the CPU. This can improve the performance of the computer by reducing the number of instructions required to access the memory.
+/// Copies data from the file to the writer using memory-mapped I/O.
 pub fn copy_mmap<W:Write>(file_path: &str, mut writer: W) -> Result<(), RicatError> {
-    println!("Copying via Memory Mapped IO");
     let file = File::open(file_path).map_err(|error| {
         RicatError::FileOpenError(format!("Error opening file {}: {}", file_path, error))
     })?;
@@ -645,28 +696,31 @@ pub fn process_input_ret<R: Read>(
 }
 
 /// Paginate output
-pub fn paginate_output<W: Write>(lines: Vec<String>, mut writer: W) -> Result<(), RicatError> {
+pub fn paginate_output<W: Write>(lines: Vec<String>, mut writer: W) -> Result<bool, RicatError> {
     let terminal_height = get_terminal_height() as usize;
     let page_size = terminal_height.saturating_sub(1);
 
     for (index, current_line) in lines.iter().enumerate() {
-        writeln!(writer, "{}", current_line).map_err(|error| {
+        writeln!(writer, "{}\r", current_line).map_err(|error| {
             RicatError::PaginationError(format!("Error writing line: {}", error))
         })?;
         if (index + 1) % page_size == 0 {
-            wait_for_user_input(&mut writer).map_err(|error| {
-                RicatError::PaginationError(format!("Error waiting for user input: {}", error))
-            })?;
+            match wait_for_user_input(&mut writer) {
+                Ok(true) => continue,
+                Ok(false) => return Ok(false),
+                Err(error) => return Err(error),
+            }
         }
     }
-    Ok(())
+    Ok(true)
 }
 
+
 /// Waiting for User Input
-pub fn wait_for_user_input<W: Write>(writer: &mut W) -> Result<(), RicatError> {
+pub fn wait_for_user_input<W: Write>(writer: &mut W) -> Result<bool, RicatError> {
     execute!(writer, Hide).map_err(|error| RicatError::CursorHideError(error.to_string()))?;
 
-    write!(writer, "--More--(press any key)")
+    write!(writer, "--More--(press any key || q to quit)")
         .map_err(|error| RicatError::LineWriteError(error.to_string()))?;
     writer
         .flush()
@@ -675,15 +729,20 @@ pub fn wait_for_user_input<W: Write>(writer: &mut W) -> Result<(), RicatError> {
     crossterm::terminal::enable_raw_mode()
         .map_err(|error| RicatError::RawModeEnableError(error.to_string()))?;
 
-    loop {
+    let has_user_quit = loop {
         match read() {
-            Ok(Event::Key(_)) => break,
+            Ok(Event::Key(key_event)) => {
+                if key_event.code == KeyCode::Char('q') {
+                    break true;
+                }
+                break false;
+            }
             Ok(_) => continue,
             Err(error) => {
                 return Err(RicatError::InputReadError(error.to_string()));
             }
         }
-    }
+    };
 
     crossterm::terminal::disable_raw_mode()
         .map_err(|error| RicatError::RawModeDisableError(error.to_string()))?;
@@ -693,7 +752,5 @@ pub fn wait_for_user_input<W: Write>(writer: &mut W) -> Result<(), RicatError> {
         .map_err(|error| RicatError::ClearLineError(error.to_string()))?;
     write!(writer, "\r").map_err(|error| RicatError::CursorMoveError(error.to_string()))?;
 
-    Ok(())
+    Ok(!has_user_quit)
 }
-
-mod tests;
