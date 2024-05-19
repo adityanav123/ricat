@@ -1,0 +1,2 @@
+cargo:rustc-env=RICAT_CONFIG_DIR=/home/aditya/.config/ricat
+ricat configuration file created at: /home/aditya/.config/ricat/ricat_cfg.toml

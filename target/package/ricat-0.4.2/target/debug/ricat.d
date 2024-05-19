@@ -1,0 +1,1 @@
+/home/aditya/Rust/ricat/target/package/ricat-0.4.2/target/debug/ricat: /home/aditya/Rust/ricat/target/package/ricat-0.4.2/src/encoding_decoding_feature.rs /home/aditya/Rust/ricat/target/package/ricat-0.4.2/src/errors.rs /home/aditya/Rust/ricat/target/package/ricat-0.4.2/src/main.rs /home/aditya/Rust/ricat/target/package/ricat-0.4.2/src/tests.rs

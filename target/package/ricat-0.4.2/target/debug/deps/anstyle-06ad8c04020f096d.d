@@ -1,0 +1,12 @@
+/home/aditya/Rust/ricat/target/package/ricat-0.4.2/target/debug/deps/libanstyle-06ad8c04020f096d.rmeta: /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/lib.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/macros.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/color.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/effect.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/reset.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/style.rs
+
+/home/aditya/Rust/ricat/target/package/ricat-0.4.2/target/debug/deps/libanstyle-06ad8c04020f096d.rlib: /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/lib.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/macros.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/color.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/effect.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/reset.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/style.rs
+
+/home/aditya/Rust/ricat/target/package/ricat-0.4.2/target/debug/deps/anstyle-06ad8c04020f096d.d: /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/lib.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/macros.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/color.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/effect.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/reset.rs /home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/style.rs
+
+/home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/lib.rs:
+/home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/macros.rs:
+/home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/color.rs:
+/home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/effect.rs:
+/home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/reset.rs:
+/home/aditya/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anstyle-1.0.6/src/style.rs:

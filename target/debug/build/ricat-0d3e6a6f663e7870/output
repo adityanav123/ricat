@@ -1,0 +1,1 @@
+cargo:rustc-env=RICAT_CONFIG_DIR=/home/aditya/Rust/ricat/target/debug/build/ricat-0d3e6a6f663e7870/out/config
