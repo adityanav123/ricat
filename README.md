@@ -196,6 +196,9 @@ To report bugs, you can go to the [GitHub Discussions](https://github.com/aditya
 
 ## Release Notes
 
+### 0.4.4
+- Bug Fix: Configuration file was not getting read properly.
+
 ### 0.4.3
 - Added support for configuration presets for the features in the ricat_cfg.toml file.
 - Added ability to quit pagination mode by pressing `q` key.

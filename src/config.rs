@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::env;
-use std::path::PathBuf;
 use std::fs::{create_dir_all, read_to_string};
+use std::path::PathBuf;
 
 /// Config struct
 #[derive(Deserialize, Debug, Default)]
@@ -10,7 +10,6 @@ pub struct RicatConfig {
     pub dollar_sign_feature: bool,
     pub tabs_feature: bool,
     pub compress_empty_line_feature: bool,
-    pub pagination_feature: bool,
 }
 
 /// Loading the config from $HOME/.config/ricat/ricat_cfg.toml

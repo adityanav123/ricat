@@ -341,7 +341,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.4.3",
+    version = "0.4.4",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -716,7 +716,7 @@ pub fn paginate_output<W: Write>(lines: Vec<String>, mut writer: W) -> Result<bo
 }
 
 // Paginate Output using Iterators
-fn paginate_output_iterator<W: Write> (
+fn _paginate_output_iterator<W: Write> (
     lines: impl Iterator<Item = String>,
     mut writer: W,
 ) -> Result<bool, RicatError> {
@@ -727,7 +727,7 @@ fn paginate_output_iterator<W: Write> (
 
     loop {
         let mut current_page_lines = Vec::new();
-        for (idx, curr_line) in lines_iter.by_ref().take(page_size) {
+        for (_idx, curr_line) in lines_iter.by_ref().take(page_size) {
             current_page_lines.push(curr_line);
         }
 
