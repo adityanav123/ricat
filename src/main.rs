@@ -715,6 +715,40 @@ pub fn paginate_output<W: Write>(lines: Vec<String>, mut writer: W) -> Result<bo
     Ok(true)
 }
 
+// Paginate Output using Iterators
+fn paginate_output_iterator<W: Write> (
+    lines: impl Iterator<Item = String>,
+    mut writer: W,
+) -> Result<bool, RicatError> {
+    let terminal_height = get_terminal_height() as usize;
+    let page_size = terminal_height.saturating_sub(1);
+
+    let mut lines_iter = lines.enumerate();
+
+    loop {
+        let mut current_page_lines = Vec::new();
+        for (idx, curr_line) in lines_iter.by_ref().take(page_size) {
+            current_page_lines.push(curr_line);
+        }
+
+        if current_page_lines.is_empty() {
+            break;
+        }
+
+        for curr_line in current_page_lines {
+            writeln!(writer, "{}\r", curr_line).map_err(|error| {
+                RicatError::PaginationError(format!("Error writing line: {}", error))
+            })?;
+        }
+
+        match wait_for_user_input(&mut writer) {
+            Ok(true) => continue,
+            Ok(false) => return Ok(false),
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(true)
+}
 
 /// Waiting for User Input
 pub fn wait_for_user_input<W: Write>(writer: &mut W) -> Result<bool, RicatError> {
