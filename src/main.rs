@@ -341,7 +341,7 @@ impl LineTextFeature for Base64Decoding {
 /// Command line arguments struct, parsed using `clap`.
 #[derive(Parser)]
 #[clap(
-    version = "0.4.4",
+    version = "0.4.5",
     author = "Aditya Navphule <adityanav@duck.com>",
     about = "ricat (Rust Implemented `cat`) : A custom implementation of cat command in Rust"
 )]
@@ -405,14 +405,31 @@ fn main() {
     }
 }
 
+// DEBUG print if each feature is enabled or not
+// fn see_features(arguments: &Cli) {
+//     println!("Features Enabled:");
+//     println!("Line Numbers: {}", arguments.numbers);
+//     println!("Dollar Symbol: {}", arguments.dollar);
+//     println!("Tabs: {}", arguments.tabs);
+//     println!("Compress Empty Lines: {}", arguments.squeeze_blank);
+//     println!("Search: {}", arguments.search_flag);
+//     println!("Pagination: {}", arguments.pagination);
+//     println!("Encode Base64: {}", arguments.encode);
+//     println!("Decode Base64: {}", arguments.decode);
+//     println!();
+// }
+
 /// Starts Executing Ricat
 fn run() -> Result<(), RicatError> {
-    let arguments = Cli::parse();
-    let mut features = add_features_from_args(&arguments); // stores the implemented features
     // Load the configuration file
     let configuration = load_config();
 
-    add_features_from_config(&mut features, &configuration);
+
+    let mut arguments = Cli::parse();
+
+    enable_features_from_config(&configuration, &mut arguments);
+    let mut features = add_features_from_args(&arguments); // stores the implemented features
+       
 
     // Determine the input source based on command line arguments
     match (arguments.files.is_empty(), features.is_empty()) {
@@ -571,22 +588,22 @@ fn add_features_from_args(arguments: &Cli) -> Vec<Box<dyn LineTextFeature>> {
 }
 
 /// Add features from configuration file
-fn add_features_from_config(features: &mut Vec<Box<dyn LineTextFeature>>, config: &config::RicatConfig) {
-    //println!("Config: {:#?}", config);
-    if config.number_feature {
-        features.push(Box::new(LineNumbering::new()));
+fn enable_features_from_config(config: &config::RicatConfig, arguments: &mut Cli) {
+    // println!("Config: {:#?}", config);
+    if config.number_feature && !arguments.numbers {
+       arguments.numbers = true; 
     }
 
-    if config.dollar_sign_feature {
-        features.push(Box::new(DollarSymbolAtLast::new()));
+    if config.dollar_sign_feature && !arguments.dollar {
+        arguments.dollar = true;
     }
 
-    if config.tabs_feature {
-        features.push(Box::new(ReplaceTabspaces::new()));
+    if config.tabs_feature && !arguments.tabs {
+        arguments.tabs = true;
     }
 
-    if config.compress_empty_line_feature {
-        features.push(Box::new(CompressEmptyLines::new()));
+    if config.compress_empty_line_feature && !arguments.squeeze_blank {
+        arguments.squeeze_blank = true;
     }
 }
 

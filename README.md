@@ -196,7 +196,7 @@ To report bugs, you can go to the [GitHub Discussions](https://github.com/aditya
 
 ## Release Notes
 
-### 0.4.4
+### 0.4.5
 - Bug Fix: Configuration file was not getting read properly.
 
 ### 0.4.3
