@@ -9,7 +9,7 @@ fn main() {
     fs::create_dir_all(&config_dir).unwrap();
 
     let default_cfg = r#"
-number_feature = false
+number_feature = true
 dollar_sign_feature = false
 tabs_feature = false
 compress_empty_line_feature = false
