@@ -89,7 +89,6 @@
 //! dollar_sign_feature = false
 //! tabs_feature = false
 //! compress_empty_line_feature = false
-//! pagination_feature = false
 //! ```
 //!
 //! When `ricat` is executed, it reads the configuration file and enables the specified features accordingly. This provides a convenient way for users to customize the behavior of `ricat` without having to specify the options every time they run the command.
