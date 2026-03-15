@@ -2,7 +2,7 @@
 
 This project is a Rust-based reimagining of the classic Unix `cat` command, drawing inspiration from its original implementation in GNU Core Utilities. It demonstrates the power and flexibility of Rust for system utilities development.
 
-## About `ricat`
+## About `ricat` This is test
 `ricat` is designed with flexibility in mind, making it a valuable tool in the command line toolkit. One of its powerful features is the ability to seamlessly integrate with the pipe `|` operator, allowing users to pipe the output of any command directly into ricat for further processing. This means you can easily use ricat to view, modify, or extend the output of other commands in real-time. Whether it's adding line numbers, appending symbols to each line, or leveraging any of ricat's other features, integrating ricat into your command line workflows can significantly enhance your productivity and command line capabilities.
 
 
